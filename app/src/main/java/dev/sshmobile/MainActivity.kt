@@ -3,6 +3,7 @@ package dev.sshmobile
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
@@ -48,7 +49,10 @@ class MainActivity : ComponentActivity() {
 
             SshMobileTheme(themeMode = settings.themeMode) {
                 AppLocalization(language = settings.language) {
-                    CompositionLocalProvider(LocalAppContainer provides container) {
+                    CompositionLocalProvider(
+                        LocalAppContainer provides container,
+                        LocalActivityResultRegistryOwner provides this@MainActivity,
+                    ) {
                         AppNavigation()
                     }
                 }
