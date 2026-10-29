@@ -1,0 +1,177 @@
+# Тестирование и результаты
+
+Дата проверки: **29.10.2026**.
+
+## 1. Автоматические тесты
+
+```bash
+./gradlew testDebugUnitTest
+```
+
+Результат: **40 тестов, 0 падений, 0 ошибок**.
+
+| Набор | Кол-во | Что проверяет |
+|---|---:|---|
+| `TerminalEmulatorTest` | 22 | текст/перенос, CR/LF, CUP, erase, SGR (16/256/truecolor), scrollback, alt screen, resize, UTF-8 split, wide chars, insert/delete, scroll regions, DEC charset, OSC title, bracketed paste, DECSC/DECRC, DA/DSR, dumpText |
+| `SshEngineIntegrationTest` | 7 | реальный SSH KEX с Apache MINA SSHD, host key prompt/fingerprint, пароль, RSA-ключ, PTY 80×24, echo, resize, неверный пароль → `AUTH`, отказ host key, смена ключа, невалидный ключ |
+| `LocalServerRepositoryTest` | 8 | шифрование секретов at rest, ключ+passphrase, сохранение секрета при редактировании, избранное/сортировка, удаление, повреждённый шифротекст, clearAll, валидация |
+| `KnownHostRepositoryTest` | 3 | хранение per host/port/algorithm, обновление с сохранением `addedAt`, remove/clear |
+
+Интеграционные SSH-тесты не используют внешнюю инфраструктуру: сервер Apache MINA SSHD
+поднимается в том же JVM на `127.0.0.1`, с реальным key exchange, аутентификацией и PTY.
+Это проверяет именно конфигурацию SSHJ, host-key verifier и PTY, а не мок.
+
+```bash
+# отдельные наборы
+./gradlew testDebugUnitTest --tests "dev.sshmobile.core.terminal.*"
+./gradlew testDebugUnitTest --tests "dev.sshmobile.core.ssh.*"
+./gradlew testDebugUnitTest --tests "dev.sshmobile.data.repository.*"
+```
+
+Android Keystore нельзя протестировать в JVM: провайдер `AndroidKeyStore` доступен только
+на устройстве. Шифрование проверено на эмуляторе косвенно (сохранение/чтение пароля и ключа
+между перезапусками приложения) и покрыто контрактными тестами репозитория с fake-cipher.
+
+## 2. Сборка
+
+| Сборка | Команда | Результат |
+|---|---|---|
+| Debug | `./gradlew assembleDebug` | успешно |
+| Release (R8, shrinkResources, подпись) | `./gradlew assembleRelease` | успешно |
+
+Release-APK устанавливался и проходил smoke-тест на эмуляторе: запуск, добавление сервера,
+подтверждение host key, парольная аутентификация, интерактивный shell.
+
+### Артефакты
+
+| Файл | Размер | SHA-256 |
+|---|---:|---|
+| `app/build/outputs/apk/release/app-release.apk` | 9.56 МБ | `C7E6A9E8F78142169E05E0E7FA5D1D8307F3E9F439FBF51A7374657B4D4F5E80` |
+| `app/build/outputs/apk/debug/app-debug.apk` | 67.05 МБ | `B71D958088833278F97B6C311F1D647266654A21D73E2FFD1492C30BAFA8F9A0` |
+
+Сертификат release-подписи (локальный keystore, **не входит в репозиторий**):
+
+```
+CN=SSH Mobile, OU=Engineering, O=SSH Mobile, L=Local, C=RU
+SHA-256: a67dfa4aa43c2dc6d1799103208d15397a315e90315ce9b970b8cbd348873b63
+```
+
+Debug APK значительно больше, потому что не применяются R8/shrink и включены debug-символы
+Compose/AndroidX.
+
+## 3. Проверка на Android-устройстве
+
+Физического устройства в среде не было. Использовался эмулятор:
+
+- AVD `sshmobile`, Android **15 (API 35)**, `sdk_gphone64_x86_64`, 1080×2400, density 420;
+- Android Emulator 37.2.12, WHPX;
+- SSH-сервер: Docker-контейнер `lscr.io/linuxserver/openssh-server` на хосте,
+  проброс `adb reverse tcp:2222 tcp:2222`, пользователь `tester`;
+- приложение подключалось к `127.0.0.1:2222`.
+
+### Проверенные сценарии
+
+| Сценарий | Результат |
+|---|---|
+| Установка debug APK | ✅ |
+| Установка release APK (R8) | ✅ |
+| Холодный запуск, тёмная тема | ✅ |
+| Add server: host/port/user/password | ✅ |
+| Сохранение, карточка на Dashboard | ✅ |
+| Edit server (смена host без повторного ввода пароля) | ✅ |
+| Первое подключение: диалог Unknown host key | ✅ |
+| Fingerprint совпал с ключом сервера (SHA-256) | ✅ (сверено с `sha256` публичного ключа) |
+| Accept host key → shell | ✅ |
+| Повторное подключение без повторного подтверждения | ✅ |
+| Парольная аутентификация | ✅ |
+| SSH-ключ: импорт файла через SAF, сохранение, подключение | ✅ |
+| Терминал: bash prompt, echo | ✅ |
+| IME-ввод (исправлен баг дублирования первого символа) | ✅ |
+| Ctrl+C через sticky Ctrl | ✅ |
+| htop: alt screen, цвета, обновление | ✅ |
+| vim: alt screen, insert mode, отрисовка | ✅ |
+| Resize PTY (`stty size` 20×49 при клавиатуре, 34×49 без) | ✅ |
+| Две одновременные сессии | ✅ |
+| Экран Sessions: статусы, длительность, закрытие | ✅ |
+| Закрытие сессии освобождает соединение | ✅ (UI: «No active sessions»; в контейнере осталось 0 `sshd-session`/`bash`) |
+| Выделение строки долгим нажатием + кнопка Copy | ✅ (UI-подтверждение) |
+| Release: подключение по паролю после R8 | ✅ |
+| Автоперезапуск процесса | ✅ (сервер и known host сохраняются) |
+
+Скриншоты: [screenshots](screenshots/).
+
+### Не проверено на устройстве
+
+- Финальный цикл Copy → Paste (видны выделение и кнопки Copy/Cancel; вставка реализована
+  через ClipboardManager и покрыта кодом, но E2E-скриншот не получен — эмулятор завершился).
+- Предупреждение «Host key has changed» на устройстве (логика покрыта unit-тестом и UI-кодом;
+  проверялся только первый ключ).
+- Автоматический reconnect после реального обрыва сети (реализован; на устройстве не
+  воспроизводился).
+- Убийство процесса ОС и восстановление сессий (ожидаемо сессии теряются; сохранённые
+  серверы/known hosts остаются).
+- Физическое устройство, разные OEM-прошивки, Android 10/11/12/13/14.
+- Fingerprint-диалог при смене ключа и отказ от него.
+- SFTP (не входит в MVP).
+
+### Замечание о среде
+
+Эмулятор дважды завершался с ошибкой QEMU:
+
+```
+Unable to connect character device modem: Failed to connect socket: Input/output error
+```
+
+Это сбой эмулятора/его netsim-окружения, а не приложение: после перезапуска AVD
+приложение и сохранённые данные продолжали работать. Из-за этого финальные проверки
+copy/paste и смены host key на устройстве не были завершены. Не следует считать это
+успешным тестом на физическом устройстве.
+
+## 4. Ручной чек-лист для приёмки
+
+1. Установить APK на чистое устройство; запустить, проверить тёмную тему.
+2. Добавить сервер с паролем; сохранить; перезапустить приложение — сервер и пароль работают.
+3. Подключиться; сверить fingerprint с `ssh-keygen -lf` / консолью сервера; Accept.
+4. Выполнить `uname -a`, `ls -la`, `top`, открыть `vim`, `nano`, `htop`; проверить цвета,
+   стрелки, Ctrl+C, Tab, Esc, Home/End, PgUp/PgDn.
+5. Повернуть экран / открыть клавиатуру; `stty size` должен меняться.
+6. Свернуть/развернуть приложение; сессия должна сохраниться в процессе.
+7. Открыть вторую сессию; проверить Sessions, закрыть одну и все.
+8. Импортировать Ed25519-ключ с passphrase; подключиться; проверить неверный passphrase.
+9. Отключить сеть/остановить сервер: увидеть Reconnecting и восстановление после возврата.
+10. Сменить host key на сервере (пересоздать host keys): увидеть предупреждение, Reject
+    должен абортить подключение, Accept — обновить known_hosts.
+11. Включить Block screenshots; убедиться, что скриншоты и Recent скрыты.
+12. Settings → Wipe all app data: серверы/ключи/host keys удалены, подключение требует
+    повторного ввода.
+
+## 5. Воспроизведение SSH-сервера для ручной проверки
+
+```bash
+docker run -d --name sshmobile-test \
+  -p 2222:2222 \
+  -e PUID=1000 -e PGID=1000 -e TZ=UTC \
+  -e USER_NAME=tester \
+  -e USER_PASSWORD='<test-password>' \
+  -e PASSWORD_ACCESS=true \
+  -e SUDO_ACCESS=false \
+  lscr.io/linuxserver/openssh-server:latest
+
+adb reverse tcp:2222 tcp:2222
+```
+
+В приложении: host `127.0.0.1`, port `2222`, user `tester`, пароль из `USER_PASSWORD`.
+Для проверки ключа добавьте публичный ключ в `/config/.ssh/authorized_keys` контейнера
+(или используйте `PUBLIC_KEY` при запуске). Не используйте реальные ключи/пароли.
+
+## 6. Что считается доказанным
+
+- Приложение компилируется и собирает debug/release APK.
+- Реальный SSH KEX/аутентификация/PTY работают (JVM-интеграция и Android-эмулятор).
+- Host key проверяется, fingerprint корректен, новый ключ требует подтверждения.
+- Секреты не хранятся в открытом виде в БД (repo-тесты + ручная проверка сохранения).
+- Терминал пригоден для интерактивных TUI (htop/vim) и изменяет размер PTY.
+- Несколько сессий работают, закрытие сессий реализовано.
+
+Не считается доказанным: работа на физическом устройстве, все OEM/версии Android,
+длительный фон, смена host key и copy/paste E2E на устройстве (см. выше).
