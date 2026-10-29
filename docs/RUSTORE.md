@@ -42,6 +42,13 @@
 
 ### Автоматическая публикация через Public API
 
+Важное ограничение RuStore: **первую версию приложения через API создать нельзя**.
+Сервер отвечает `Not found active version for application with package = dev.sshmobile`,
+пока у приложения нет активной (опубликованной) версии. Проверено на appId 2063778733:
+список приложений отдаётся, авторизация по ключу проходит, создание черновика — нет.
+Поэтому первая версия загружается в консоли вручную (шаги 1–8 выше), а API используется
+для всех последующих обновлений.
+
 Скрипт `scripts/rustore-publish.cmd` (обёртка над `scripts/rustore-publish.ps1`) выполняет
 весь цикл через [RuStore Public API](https://www.rustore.ru/help/work-with-rustore-api/api-upload-publication-app)
 и берёт тексты карточки из `store/rustore.json`:
