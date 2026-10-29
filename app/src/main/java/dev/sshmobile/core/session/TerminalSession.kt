@@ -133,9 +133,7 @@ internal class TerminalSession(
                     )
                 }
                 if (!enabled) {
-                    markDisconnected(
-                        _state.value.errorMessage ?: "Connection lost. Automatic reconnect is disabled.",
-                    )
+                    markDisconnected(SessionError.AUTO_RECONNECT_DISABLED)
                     return
                 }
                 delay(backoffMillis(attempt))
@@ -146,11 +144,11 @@ internal class TerminalSession(
                 closeConnection()
                 if (userClosed) return
                 if (cleanExit) {
-                    markDisconnected("Session ended.")
+                    markDisconnected(SessionError.SESSION_ENDED)
                     return
                 }
                 if (!autoReconnectEnabled()) {
-                    markDisconnected("Connection lost. Automatic reconnect is disabled.")
+                    markDisconnected(SessionError.AUTO_RECONNECT_DISABLED)
                     return
                 }
                 attempt = 1
@@ -158,7 +156,7 @@ internal class TerminalSession(
                     it.copy(
                         status = SessionStatus.RECONNECTING,
                         reconnectAttempt = attempt,
-                        errorMessage = "Connection lost. Reconnecting…",
+                        error = SessionError.CONNECTION_LOST,
                     )
                 }
             } catch (e: CancellationException) {
@@ -166,24 +164,21 @@ internal class TerminalSession(
             } catch (t: Throwable) {
                 closeConnection()
                 if (userClosed) return
-                val message = userMessage(t)
+                val error = sessionError(t)
                 if (hostKeyRejected) {
                     markDisconnected(
-                        if (hostKeyTimedOut) {
-                            "Host key confirmation timed out. Reconnect to try again."
-                        } else {
-                            "Host key rejected. The connection was aborted."
-                        },
+                        if (hostKeyTimedOut) SessionError.HOST_KEY_TIMEOUT
+                        else SessionError.HOST_KEY_REJECTED,
                     )
                     return
                 }
                 if (t is SshException && t.kind == dev.sshmobile.core.ssh.SshErrorKind.AUTH) {
                     // Retrying with the same bad credentials only locks accounts.
-                    markDisconnected(message)
+                    markDisconnected(error)
                     return
                 }
                 if (!autoReconnectEnabled() || attempt >= MAX_RECONNECT_ATTEMPTS) {
-                    markDisconnected(message)
+                    markDisconnected(error)
                     return
                 }
                 attempt = if (attempt <= 0) 1 else attempt + 1
@@ -191,7 +186,7 @@ internal class TerminalSession(
                     it.copy(
                         status = SessionStatus.RECONNECTING,
                         reconnectAttempt = attempt,
-                        errorMessage = message,
+                        error = error,
                     )
                 }
             }
@@ -205,7 +200,7 @@ internal class TerminalSession(
         _state.update {
             it.copy(
                 status = SessionStatus.CONNECTING,
-                errorMessage = null,
+                error = null,
                 hostKeyPrompt = null,
                 reconnectAttempt = 0,
                 autoReconnect = autoReconnectEnabled(),
@@ -258,7 +253,7 @@ internal class TerminalSession(
             it.copy(
                 status = SessionStatus.CONNECTED,
                 connectedAt = clock(),
-                errorMessage = null,
+                error = null,
                 hostKeyPrompt = null,
                 terminalTitle = emulator.osTitle,
             )
@@ -412,7 +407,7 @@ internal class TerminalSession(
         if (userClosed) return
         if (runJob?.isActive == true) return
         _state.update {
-            it.copy(status = SessionStatus.CONNECTING, errorMessage = null, reconnectAttempt = 0)
+            it.copy(status = SessionStatus.CONNECTING, error = null, reconnectAttempt = 0)
         }
         start()
     }
@@ -446,11 +441,11 @@ internal class TerminalSession(
         activeConnection = null
     }
 
-    private fun markDisconnected(message: String) {
+    private fun markDisconnected(error: SessionError) {
         _state.update {
             it.copy(
                 status = SessionStatus.DISCONNECTED,
-                errorMessage = message,
+                error = error,
                 hostKeyPrompt = null,
             )
         }
@@ -464,11 +459,20 @@ internal class TerminalSession(
         }
     }
 
-    private fun userMessage(t: Throwable): String = when (t) {
-        is SshException -> t.message ?: "Connection failed."
-        is CredentialsUnavailableException ->
-            "Stored credentials are no longer available. Edit the server and enter them again."
-        else -> "Connection failed. Check the host, network and credentials."
+    private fun sessionError(t: Throwable): SessionError = when (t) {
+        is SshException -> when (t.kind) {
+            dev.sshmobile.core.ssh.SshErrorKind.DNS -> SessionError.HOST_NOT_FOUND
+            dev.sshmobile.core.ssh.SshErrorKind.TIMEOUT -> SessionError.CONNECT_TIMEOUT
+            dev.sshmobile.core.ssh.SshErrorKind.REFUSED -> SessionError.CONNECTION_REFUSED
+            dev.sshmobile.core.ssh.SshErrorKind.AUTH -> SessionError.AUTH_FAILED
+            dev.sshmobile.core.ssh.SshErrorKind.HOST_KEY -> SessionError.HOST_KEY_REJECTED
+            dev.sshmobile.core.ssh.SshErrorKind.KEY_FORMAT -> SessionError.KEY_FORMAT
+            dev.sshmobile.core.ssh.SshErrorKind.PROTOCOL -> SessionError.PROTOCOL
+            dev.sshmobile.core.ssh.SshErrorKind.NETWORK -> SessionError.NETWORK
+            dev.sshmobile.core.ssh.SshErrorKind.UNKNOWN -> SessionError.UNKNOWN
+        }
+        is CredentialsUnavailableException -> SessionError.CREDENTIALS_UNAVAILABLE
+        else -> SessionError.UNKNOWN
     }
 
     private fun backoffMillis(attempt: Int): Long {

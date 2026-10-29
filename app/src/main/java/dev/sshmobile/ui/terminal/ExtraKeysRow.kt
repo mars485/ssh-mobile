@@ -17,10 +17,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.sshmobile.R
 import dev.sshmobile.core.terminal.ArrowKey
 import dev.sshmobile.core.terminal.TerminalInput
 import dev.sshmobile.ui.theme.GreenAccent
@@ -75,11 +77,11 @@ fun ExtraKeysRow(
         KeyChip("^C", onClick = { onSend(TerminalInput.ctrlC()) })
         KeyChip("^D", onClick = { onSend(TerminalInput.ctrlD()) })
         KeyChip("^Z", onClick = { onSend(TerminalInput.ctrlZ()) })
-        KeyChip("paste", onClick = onPaste)
+        KeyChip(stringResource(R.string.action_paste), onClick = onPaste)
 
         if (hasSelection) {
-            KeyChip("copy", active = true, onClick = onCopySelection)
-            KeyChip("cancel", onClick = onClearSelection)
+            KeyChip(stringResource(R.string.action_copy), active = true, onClick = onCopySelection)
+            KeyChip(stringResource(R.string.action_cancel), onClick = onClearSelection)
         }
     }
 }

@@ -2,14 +2,17 @@ package dev.sshmobile.ui.servers
 
 import android.content.Context
 import android.net.Uri
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.sshmobile.R
 import dev.sshmobile.core.ssh.PrivateKeyInspector
 import dev.sshmobile.data.repository.ServerRepository
 import dev.sshmobile.domain.model.AuthType
 import dev.sshmobile.domain.model.Server
 import dev.sshmobile.domain.model.ServerDraft
 import dev.sshmobile.domain.model.ServerValidation
+import dev.sshmobile.domain.model.ValidationError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,8 +40,8 @@ data class ServerEditUiState(
     val importedKeyName: String? = null,
     val loading: Boolean = true,
     val saving: Boolean = false,
-    val error: String? = null,
-    val validationErrors: List<String> = emptyList(),
+    @StringRes val errorRes: Int? = null,
+    val validationErrors: List<ValidationError> = emptyList(),
     val saved: Boolean = false,
     val deleted: Boolean = false,
 ) {
@@ -60,7 +63,7 @@ class ServerEditViewModel(
                 val server = repository.getServer(serverId)
                 if (server == null) {
                     _state.update {
-                        it.copy(loading = false, error = "This server no longer exists.")
+                        it.copy(loading = false, errorRes = R.string.error_server_missing)
                     }
                 } else {
                     _state.update { it.fromServer(server) }
@@ -69,29 +72,29 @@ class ServerEditViewModel(
         }
     }
 
-    fun setName(value: String) = _state.update { it.copy(name = value, error = null) }
-    fun setHost(value: String) = _state.update { it.copy(host = value, error = null) }
+    fun setName(value: String) = _state.update { it.copy(name = value, errorRes = null) }
+    fun setHost(value: String) = _state.update { it.copy(host = value, errorRes = null) }
     fun setPort(value: String) = _state.update {
-        it.copy(port = value.filter { ch -> ch.isDigit() }.take(5), error = null)
+        it.copy(port = value.filter { ch -> ch.isDigit() }.take(5), errorRes = null)
     }
 
-    fun setUsername(value: String) = _state.update { it.copy(username = value, error = null) }
+    fun setUsername(value: String) = _state.update { it.copy(username = value, errorRes = null) }
 
     fun setGroup(value: String) = _state.update { it.copy(groupName = value) }
 
     fun setFavorite(value: Boolean) = _state.update { it.copy(favorite = value) }
 
     fun setAuthType(type: AuthType) = _state.update {
-        if (it.authType == type) it else it.copy(authType = type, error = null, validationErrors = emptyList())
+        if (it.authType == type) it else it.copy(authType = type, errorRes = null, validationErrors = emptyList())
     }
 
-    fun setPassword(value: String) = _state.update { it.copy(password = value, error = null) }
+    fun setPassword(value: String) = _state.update { it.copy(password = value, errorRes = null) }
 
     fun setPrivateKey(value: String) = _state.update {
-        it.copy(privateKey = value, importedKeyName = null, error = null)
+        it.copy(privateKey = value, importedKeyName = null, errorRes = null)
     }
 
-    fun setPassphrase(value: String) = _state.update { it.copy(passphrase = value, error = null) }
+    fun setPassphrase(value: String) = _state.update { it.copy(passphrase = value, errorRes = null) }
 
     fun importKey(context: Context, uri: Uri) {
         viewModelScope.launch {
@@ -101,13 +104,13 @@ class ServerEditViewModel(
                     val name = resolver.displayName(uri) ?: "private key"
                     val bytes = resolver.openInputStream(uri)?.use { stream ->
                         readLimited(stream, MAX_KEY_BYTES + 1)
-                    } ?: throw IllegalStateException("The selected file could not be opened")
+                    } ?: throw KeyImportException(R.string.error_key_file_open)
                     if (bytes.size > MAX_KEY_BYTES) {
-                        throw IllegalStateException("The key file is too large")
+                        throw KeyImportException(R.string.error_key_file_too_large)
                     }
                     val text = String(bytes, StandardCharsets.UTF_8)
                     if (!text.contains("PRIVATE KEY")) {
-                        throw IllegalStateException("The selected file does not look like a private key")
+                        throw KeyImportException(R.string.error_key_file_not_key)
                     }
                     name to text
                 }
@@ -119,12 +122,12 @@ class ServerEditViewModel(
                             privateKey = text,
                             importedKeyName = name,
                             authType = AuthType.PRIVATE_KEY,
-                            error = null,
+                            errorRes = null,
                             validationErrors = emptyList(),
                         )
                     },
                     onFailure = {
-                        current.copy(error = it.message ?: "Could not read the selected key")
+                        current.copy(errorRes = (it as? KeyImportException)?.messageRes ?: R.string.error_key_file_open)
                     },
                 )
             }
@@ -158,11 +161,11 @@ class ServerEditViewModel(
         )
         val errors = ServerValidation.validate(draft, current.canKeepSecret)
         if (errors.isNotEmpty()) {
-            _state.update { it.copy(validationErrors = errors, error = null) }
+            _state.update { it.copy(validationErrors = errors, errorRes = null) }
             return
         }
 
-        _state.update { it.copy(saving = true, validationErrors = emptyList(), error = null) }
+        _state.update { it.copy(saving = true, validationErrors = emptyList(), errorRes = null) }
         viewModelScope.launch {
             val keySummary = if (current.authType == AuthType.PRIVATE_KEY) {
                 val typedKey = current.privateKey.takeIf { it.isNotBlank() }
@@ -183,7 +186,7 @@ class ServerEditViewModel(
                             _state.update {
                                 it.copy(
                                     saving = false,
-                                    error = "Could not read the private key. Check the format and passphrase.",
+                                    errorRes = R.string.error_key_parse,
                                 )
                             }
                             return@launch
@@ -205,7 +208,7 @@ class ServerEditViewModel(
                 },
                 onFailure = {
                     _state.update {
-                        it.copy(saving = false, error = "Could not save the server. Please try again.")
+                        it.copy(saving = false, errorRes = R.string.error_save_server)
                     }
                 },
             )
@@ -239,6 +242,8 @@ class ServerEditViewModel(
         private const val MAX_KEY_BYTES = 128 * 1024
     }
 }
+
+private class KeyImportException(@StringRes val messageRes: Int) : Exception()
 
 private fun android.content.ContentResolver.displayName(uri: Uri): String? {
     return runCatching {

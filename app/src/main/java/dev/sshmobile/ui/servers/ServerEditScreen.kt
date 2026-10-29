@@ -2,6 +2,7 @@ package dev.sshmobile.ui.servers
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -54,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -62,7 +65,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.sshmobile.R
 import dev.sshmobile.domain.model.AuthType
+import dev.sshmobile.domain.model.ValidationError
 import dev.sshmobile.ui.LocalAppContainer
 import dev.sshmobile.ui.SimpleViewModelFactory
 import dev.sshmobile.ui.components.ConfirmDialog
@@ -102,11 +107,18 @@ fun ServerEditScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(if (state.isNew) "New server" else "Edit server")
+                    Text(
+                        stringResource(
+                            if (state.isNew) R.string.edit_title_new else R.string.edit_title_edit,
+                        ),
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onDone) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
                     }
                 },
                 actions = {
@@ -115,7 +127,11 @@ fun ServerEditScreen(
                         enabled = !state.saving && !state.loading,
                     ) {
                         Text(
-                            text = if (state.saving) "Saving…" else "Save",
+                            text = if (state.saving) {
+                                stringResource(R.string.edit_saving)
+                            } else {
+                                stringResource(R.string.action_save)
+                            },
                             color = if (state.saving) MaterialTheme.colorScheme.onSurfaceVariant else GreenSoft,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -143,16 +159,17 @@ fun ServerEditScreen(
         Column(
             modifier = Modifier
                 .padding(padding)
+                .imePadding()
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            SectionLabel("Connection")
+            SectionLabel(stringResource(R.string.edit_connection_section))
             OutlinedTextField(
                 value = state.name,
                 onValueChange = viewModel::setName,
-                label = { Text("Display name") },
-                placeholder = { Text("Production server") },
+                label = { Text(stringResource(R.string.edit_display_name_label)) },
+                placeholder = { Text(stringResource(R.string.edit_display_name_placeholder)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -160,8 +177,8 @@ fun ServerEditScreen(
             OutlinedTextField(
                 value = state.host,
                 onValueChange = viewModel::setHost,
-                label = { Text("Host or IP address") },
-                placeholder = { Text("example.com") },
+                label = { Text(stringResource(R.string.edit_host_label)) },
+                placeholder = { Text(stringResource(R.string.edit_host_placeholder)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false),
                 modifier = Modifier.fillMaxWidth(),
@@ -171,7 +188,7 @@ fun ServerEditScreen(
                 OutlinedTextField(
                     value = state.port,
                     onValueChange = viewModel::setPort,
-                    label = { Text("Port") },
+                    label = { Text(stringResource(R.string.edit_port_label)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.width(110.dp),
@@ -179,15 +196,15 @@ fun ServerEditScreen(
                 OutlinedTextField(
                     value = state.username,
                     onValueChange = viewModel::setUsername,
-                    label = { Text("Username") },
-                    placeholder = { Text("root") },
+                    label = { Text(stringResource(R.string.edit_username_label)) },
+                    placeholder = { Text(stringResource(R.string.edit_username_placeholder)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                     modifier = Modifier.weight(1f),
                 )
             }
 
-            SectionLabel("Authentication")
+            SectionLabel(stringResource(R.string.edit_auth_section))
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = state.authType == AuthType.PASSWORD,
@@ -197,7 +214,7 @@ fun ServerEditScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Password")
+                        Text(stringResource(R.string.edit_auth_password))
                     }
                 }
                 SegmentedButton(
@@ -208,7 +225,7 @@ fun ServerEditScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Key, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("SSH key")
+                        Text(stringResource(R.string.edit_auth_key))
                     }
                 }
             }
@@ -218,7 +235,17 @@ fun ServerEditScreen(
                 OutlinedTextField(
                     value = state.password,
                     onValueChange = viewModel::setPassword,
-                    label = { Text(if (state.canKeepSecret) "New password (leave blank to keep)" else "Password") },
+                    label = {
+                        Text(
+                            stringResource(
+                                if (state.canKeepSecret) {
+                                    R.string.edit_password_keep_label
+                                } else {
+                                    R.string.edit_password_label
+                                },
+                            ),
+                        )
+                    },
                     singleLine = true,
                     visualTransformation = if (showPassword) {
                         VisualTransformation.None
@@ -234,36 +261,42 @@ fun ServerEditScreen(
                                 } else {
                                     Icons.Outlined.Visibility
                                 },
-                                contentDescription = if (showPassword) "Hide password" else "Show password",
+                                contentDescription = stringResource(
+                                    if (showPassword) R.string.edit_hide_password else R.string.edit_show_password,
+                                ),
                             )
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
                 )
             } else {
-                if (state.canKeepSecret && state.storedKeySummary != null) {
-                    Text(
-                        text = "Stored key: ${state.storedKeySummary}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = GreenSoft,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                    )
+                state.storedKeySummary?.let { storedKeySummary ->
+                    if (state.canKeepSecret) {
+                        Text(
+                            text = stringResource(R.string.edit_stored_key, storedKeySummary),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GreenSoft,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
                 }
                 OutlinedTextField(
                     value = state.privateKey,
                     onValueChange = viewModel::setPrivateKey,
                     label = {
                         Text(
-                            if (state.canKeepSecret) {
-                                "New private key (leave blank to keep)"
-                            } else {
-                                "Private key (PEM / OpenSSH)"
-                            },
+                            stringResource(
+                                if (state.canKeepSecret) {
+                                    R.string.edit_key_keep_label
+                                } else {
+                                    R.string.edit_key_label
+                                },
+                            ),
                         )
                     },
                     placeholder = {
-                        Text("-----BEGIN OPENSSH PRIVATE KEY-----")
+                        Text(stringResource(R.string.edit_key_placeholder))
                     },
                     minLines = 4,
                     maxLines = 8,
@@ -282,7 +315,9 @@ fun ServerEditScreen(
                                 } else {
                                     Icons.Outlined.Visibility
                                 },
-                                contentDescription = if (showKey) "Hide key" else "Show key",
+                                contentDescription = stringResource(
+                                    if (showKey) R.string.edit_hide_key else R.string.edit_show_key,
+                                ),
                             )
                         }
                     },
@@ -295,11 +330,11 @@ fun ServerEditScreen(
                 ) {
                     Icon(Icons.Outlined.Description, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Import key from file")
+                    Text(stringResource(R.string.edit_import_key))
                 }
-                if (state.importedKeyName != null) {
+                state.importedKeyName?.let { importedKeyName ->
                     Text(
-                        text = "Imported: ${state.importedKeyName}",
+                        text = stringResource(R.string.edit_imported_key, importedKeyName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 6.dp),
@@ -309,7 +344,7 @@ fun ServerEditScreen(
                 OutlinedTextField(
                     value = state.passphrase,
                     onValueChange = viewModel::setPassphrase,
-                    label = { Text("Key passphrase (if encrypted)") },
+                    label = { Text(stringResource(R.string.edit_key_passphrase_label)) },
                     singleLine = true,
                     visualTransformation = if (showPassphrase) {
                         VisualTransformation.None
@@ -325,7 +360,10 @@ fun ServerEditScreen(
                                 } else {
                                     Icons.Outlined.Visibility
                                 },
-                                contentDescription = if (showPassphrase) "Hide passphrase" else "Show passphrase",
+                                contentDescription = stringResource(
+                                    if (showPassphrase) R.string.edit_hide_passphrase
+                                    else R.string.edit_show_passphrase,
+                                ),
                             )
                         }
                     },
@@ -334,17 +372,14 @@ fun ServerEditScreen(
             }
 
             Spacer(Modifier.height(12.dp))
-            InfoNote(
-                "Passwords, private keys and passphrases are encrypted with a non-exportable " +
-                    "Android Keystore key before being saved. They are never written to logs.",
-            )
+            InfoNote(stringResource(R.string.edit_security_note))
 
-            SectionLabel("Organization")
+            SectionLabel(stringResource(R.string.edit_organization_section))
             OutlinedTextField(
                 value = state.groupName,
                 onValueChange = viewModel::setGroup,
-                label = { Text("Group (optional)") },
-                placeholder = { Text("Production, Home lab…") },
+                label = { Text(stringResource(R.string.edit_group_label)) },
+                placeholder = { Text(stringResource(R.string.edit_group_placeholder)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -354,9 +389,9 @@ fun ServerEditScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Favorite", style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.edit_favorite_title), style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "Show this server at the top of the dashboard.",
+                        stringResource(R.string.edit_favorite_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -364,7 +399,7 @@ fun ServerEditScreen(
                 Switch(checked = state.favorite, onCheckedChange = viewModel::setFavorite)
             }
 
-            if (state.validationErrors.isNotEmpty() || state.error != null) {
+            if (state.validationErrors.isNotEmpty() || state.errorRes != null) {
                 Spacer(Modifier.height(16.dp))
                 Column(
                     modifier = Modifier
@@ -373,16 +408,16 @@ fun ServerEditScreen(
                         .background(MaterialTheme.colorScheme.errorContainer)
                         .padding(12.dp),
                 ) {
-                    state.error?.let {
+                    state.errorRes?.let {
                         Text(
-                            text = it,
+                            text = stringResource(it),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                         )
                     }
                     state.validationErrors.forEach {
                         Text(
-                            text = "• $it",
+                            text = "• ${stringResource(validationErrorRes(it))}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                         )
@@ -398,7 +433,13 @@ fun ServerEditScreen(
                     .fillMaxWidth()
                     .height(50.dp),
             ) {
-                Text(if (state.saving) "Saving…" else if (state.isNew) "Add server" else "Save changes")
+                Text(
+                    when {
+                        state.saving -> stringResource(R.string.edit_saving)
+                        state.isNew -> stringResource(R.string.edit_add_button)
+                        else -> stringResource(R.string.edit_save_button)
+                    },
+                )
             }
 
             if (!state.isNew) {
@@ -412,7 +453,7 @@ fun ServerEditScreen(
                 ) {
                     Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Delete server")
+                    Text(stringResource(R.string.edit_delete_button))
                 }
             }
             Spacer(Modifier.height(32.dp))
@@ -421,14 +462,25 @@ fun ServerEditScreen(
 
     if (confirmDelete) {
         ConfirmDialog(
-            title = "Delete server?",
-            message = "The server and its encrypted credentials will be removed from this device.",
-            confirmLabel = "Delete",
+            title = stringResource(R.string.edit_delete_title),
+            message = stringResource(R.string.edit_delete_message),
+            confirmLabel = stringResource(R.string.action_delete),
             destructive = true,
             onConfirm = viewModel::delete,
             onDismiss = { confirmDelete = false },
         )
     }
+}
+
+@StringRes
+private fun validationErrorRes(error: ValidationError): Int = when (error) {
+    ValidationError.NAME_REQUIRED -> R.string.validation_name_required
+    ValidationError.HOST_REQUIRED -> R.string.validation_host_required
+    ValidationError.HOST_SPACES -> R.string.validation_host_spaces
+    ValidationError.PORT_INVALID -> R.string.validation_port_invalid
+    ValidationError.USERNAME_REQUIRED -> R.string.validation_username_required
+    ValidationError.PASSWORD_REQUIRED -> R.string.validation_password_required
+    ValidationError.PRIVATE_KEY_REQUIRED -> R.string.validation_key_required
 }
 
 @Composable

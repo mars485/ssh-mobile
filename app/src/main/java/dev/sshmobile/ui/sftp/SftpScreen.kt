@@ -31,7 +31,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.sshmobile.R
 import dev.sshmobile.ui.components.SectionLabel
 import dev.sshmobile.ui.theme.GreenSoft
 
@@ -41,10 +43,13 @@ fun SftpScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("SFTP") },
+                title = { Text(stringResource(R.string.sftp_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -77,26 +82,27 @@ fun SftpScreen(onBack: () -> Unit) {
                             modifier = Modifier.size(24.dp),
                         )
                         Spacer(Modifier.width(10.dp))
-                        Text("File manager planned for v0.3", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            stringResource(R.string.sftp_planned_title),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
                     }
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "The MVP focuses on a secure, reliable interactive terminal. SFTP is the " +
-                            "next milestone and will reuse the same encrypted credential storage and " +
-                            "host-key verification.",
+                        stringResource(R.string.sftp_planned_text),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
 
-            SectionLabel("Planned capabilities")
+            SectionLabel(stringResource(R.string.sftp_capabilities_section))
             listOf(
-                "Browse remote directories",
-                "Upload and download files",
-                "Create, rename and delete entries",
-                "Edit text files",
-                "Inspect and change permissions",
+                R.string.sftp_cap_browse,
+                R.string.sftp_cap_transfer,
+                R.string.sftp_cap_manage,
+                R.string.sftp_cap_edit,
+                R.string.sftp_cap_permissions,
             ).forEach { item ->
                 Row(
                     modifier = Modifier.padding(vertical = 6.dp),
@@ -109,14 +115,13 @@ fun SftpScreen(onBack: () -> Unit) {
                         modifier = Modifier.size(16.dp),
                     )
                     Spacer(Modifier.width(10.dp))
-                    Text(item, style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(item), style = MaterialTheme.typography.bodyMedium)
                 }
             }
 
             Spacer(Modifier.height(24.dp))
             Text(
-                "Until SFTP is available, use standard terminal tools such as scp, sftp, rsync " +
-                    "or sshfs from another device.",
+                stringResource(R.string.sftp_alternatives),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

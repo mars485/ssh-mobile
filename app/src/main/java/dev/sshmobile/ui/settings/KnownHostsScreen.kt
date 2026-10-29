@@ -37,10 +37,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.sshmobile.R
 import dev.sshmobile.domain.model.KnownHostKey
 import dev.sshmobile.ui.LocalAppContainer
 import dev.sshmobile.ui.SimpleViewModelFactory
@@ -64,16 +66,22 @@ fun KnownHostsScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Known hosts") },
+                title = { Text(stringResource(R.string.known_hosts_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
                     }
                 },
                 actions = {
                     if (hosts.isNotEmpty()) {
                         IconButton(onClick = { confirmClear = true }) {
-                            Icon(Icons.Outlined.DeleteSweep, contentDescription = "Forget all host keys")
+                            Icon(
+                                Icons.Outlined.DeleteSweep,
+                                contentDescription = stringResource(R.string.known_hosts_forget_all),
+                            )
                         }
                     }
                 },
@@ -86,9 +94,8 @@ fun KnownHostsScreen(onBack: () -> Unit) {
     ) { padding ->
         if (hosts.isEmpty()) {
             EmptyState(
-                title = "No trusted hosts",
-                message = "The first time you connect, the server fingerprint will be shown for " +
-                    "confirmation and saved here.",
+                title = stringResource(R.string.known_hosts_empty_title),
+                message = stringResource(R.string.known_hosts_empty_message),
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
@@ -111,10 +118,9 @@ fun KnownHostsScreen(onBack: () -> Unit) {
 
     if (confirmClear) {
         ConfirmDialog(
-            title = "Forget all host keys?",
-            message = "Every server will be treated as unknown on the next connection and will " +
-                "ask for fingerprint confirmation again.",
-            confirmLabel = "Forget all",
+            title = stringResource(R.string.known_hosts_clear_title),
+            message = stringResource(R.string.known_hosts_clear_message),
+            confirmLabel = stringResource(R.string.known_hosts_clear_confirm),
             destructive = true,
             onConfirm = viewModel::clearAll,
             onDismiss = { confirmClear = false },
@@ -155,7 +161,7 @@ private fun KnownHostCard(host: KnownHostKey, onRemove: () -> Unit) {
                 IconButton(onClick = onRemove) {
                     Icon(
                         Icons.Outlined.Delete,
-                        contentDescription = "Forget this host key",
+                        contentDescription = stringResource(R.string.known_hosts_forget_one),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -169,7 +175,11 @@ private fun KnownHostCard(host: KnownHostKey, onRemove: () -> Unit) {
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "Trusted ${formatTimestamp(host.addedAt)} · last seen ${formatTimestamp(host.lastSeenAt)}",
+                text = stringResource(
+                    R.string.known_hosts_trusted,
+                    formatTimestamp(host.addedAt),
+                    formatTimestamp(host.lastSeenAt),
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -178,6 +188,6 @@ private fun KnownHostCard(host: KnownHostKey, onRemove: () -> Unit) {
 }
 
 private fun formatTimestamp(millis: Long): String {
-    if (millis <= 0) return "unknown"
+    if (millis <= 0) return "—"
     return SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(millis))
 }

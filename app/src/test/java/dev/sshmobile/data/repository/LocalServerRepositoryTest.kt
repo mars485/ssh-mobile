@@ -8,6 +8,7 @@ import dev.sshmobile.domain.model.AuthType
 import dev.sshmobile.domain.model.ServerCredentials
 import dev.sshmobile.domain.model.ServerDraft
 import dev.sshmobile.domain.model.ServerValidation
+import dev.sshmobile.domain.model.ValidationError
 import dev.sshmobile.testing.FakeSecretCipher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -180,10 +181,16 @@ class LocalServerRepositoryTest {
     @Test
     fun `validation requires a secret for new and re-authenticated servers`() {
         val draft = passwordDraft(password = "")
-        assertTrue(ServerValidation.validate(draft, hasStoredSecret = false).any { it.contains("Password") })
+        assertTrue(
+            ServerValidation.validate(draft, hasStoredSecret = false)
+                .contains(ValidationError.PASSWORD_REQUIRED),
+        )
         assertTrue(ServerValidation.validate(draft, hasStoredSecret = true).isEmpty())
 
         val keyDraft = draft.copy(authType = AuthType.PRIVATE_KEY)
-        assertTrue(ServerValidation.validate(keyDraft, hasStoredSecret = false).any { it.contains("key") })
+        assertTrue(
+            ServerValidation.validate(keyDraft, hasStoredSecret = false)
+                .contains(ValidationError.PRIVATE_KEY_REQUIRED),
+        )
     }
 }

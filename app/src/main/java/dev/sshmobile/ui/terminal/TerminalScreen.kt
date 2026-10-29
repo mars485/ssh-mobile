@@ -79,8 +79,10 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -93,6 +95,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.sshmobile.R
+import dev.sshmobile.core.session.SessionError
 import dev.sshmobile.core.session.SessionStatus
 import dev.sshmobile.core.terminal.ArrowKey
 import dev.sshmobile.core.terminal.TerminalInput
@@ -130,6 +134,7 @@ fun TerminalScreen(
     val settings by settingsFlow.collectAsStateWithLifecycle(initialValue = AppSettings())
 
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     val keyboard = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
     val snackbarHost = remember { SnackbarHostState() }
@@ -179,7 +184,14 @@ fun TerminalScreen(
         val text = viewModel.textForLines(current.first, current.last)
         if (text.isNotEmpty()) {
             clipboard.setText(AnnotatedString(text))
-            scope.launch { snackbarHost.showSnackbar("Copied ${current.last - current.first + 1} line(s)") }
+            scope.launch {
+                snackbarHost.showSnackbar(
+                    context.getString(
+                        R.string.terminal_copied_lines,
+                        current.last - current.first + 1,
+                    ),
+                )
+            }
         }
         selection = null
     }
@@ -187,11 +199,13 @@ fun TerminalScreen(
     fun pasteFromClipboard() {
         val text = clipboard.getText()?.text
         if (text.isNullOrEmpty()) {
-            scope.launch { snackbarHost.showSnackbar("Clipboard is empty") }
+            scope.launch { snackbarHost.showSnackbar(context.getString(R.string.terminal_clipboard_empty)) }
             return
         }
         viewModel.paste(text, snapshot.bracketedPaste)
-        scope.launch { snackbarHost.showSnackbar("Pasted ${text.length} character(s)") }
+        scope.launch {
+            snackbarHost.showSnackbar(context.getString(R.string.terminal_pasted_chars, text.length))
+        }
     }
 
     fun closeSession() {
@@ -273,24 +287,36 @@ fun TerminalScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = stringResource(R.string.action_back),
+                        )
                     }
                 },
                 actions = {
                     if (state.status == SessionStatus.DISCONNECTED) {
                         IconButton(onClick = viewModel::reconnect) {
-                            Icon(Icons.Outlined.Refresh, contentDescription = "Reconnect")
+                            Icon(
+                                Icons.Outlined.Refresh,
+                                contentDescription = stringResource(R.string.action_reconnect),
+                            )
                         }
                     }
                     IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Outlined.MoreVert, contentDescription = "More")
+                        Icon(
+                            Icons.Outlined.MoreVert,
+                            contentDescription = stringResource(R.string.terminal_more),
+                        )
                     }
                     IconButton(onClick = { confirmClose = true }) {
-                        Icon(Icons.Outlined.Close, contentDescription = "Close session")
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = stringResource(R.string.terminal_close_session_desc),
+                        )
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(
-                            text = { Text("Copy terminal buffer") },
+                            text = { Text(stringResource(R.string.terminal_copy_buffer)) },
                             leadingIcon = { Icon(Icons.Outlined.ContentCopy, contentDescription = null) },
                             onClick = {
                                 menuOpen = false
@@ -298,7 +324,7 @@ fun TerminalScreen(
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text("Paste") },
+                            text = { Text(stringResource(R.string.terminal_paste)) },
                             leadingIcon = { Icon(Icons.Outlined.ContentPaste, contentDescription = null) },
                             onClick = {
                                 menuOpen = false
@@ -306,21 +332,28 @@ fun TerminalScreen(
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text(if (showExtraKeys) "Hide extra keys" else "Show extra keys") },
+                            text = {
+                                Text(
+                                    stringResource(
+                                        if (showExtraKeys) R.string.terminal_hide_extra_keys
+                                        else R.string.terminal_show_extra_keys,
+                                    ),
+                                )
+                            },
                             onClick = {
                                 menuOpen = false
                                 showExtraKeys = !showExtraKeys
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text("Sessions") },
+                            text = { Text(stringResource(R.string.action_sessions)) },
                             onClick = {
                                 menuOpen = false
                                 onOpenSessions()
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text("Close session") },
+                            text = { Text(stringResource(R.string.terminal_close_session_menu)) },
                             onClick = {
                                 menuOpen = false
                                 confirmClose = true
@@ -349,15 +382,19 @@ fun TerminalScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Text("Session unavailable", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.terminal_session_unavailable),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        state.errorMessage ?: "Open the server again from the dashboard.",
+                        text = state.error?.let { sessionErrorText(it) }
+                            ?: stringResource(R.string.error_session_unavailable),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(20.dp))
-                    Button(onClick = onBack) { Text("Back to servers") }
+                    Button(onClick = onBack) { Text(stringResource(R.string.terminal_back_to_servers)) }
                 }
                 return@Box
             }
@@ -412,10 +449,14 @@ fun TerminalScreen(
                                     Spacer(Modifier.width(8.dp))
                                     Text(
                                         text = when (state.status) {
-                                            SessionStatus.VERIFYING_HOST_KEY -> "Waiting for host key confirmation…"
+                                            SessionStatus.VERIFYING_HOST_KEY ->
+                                                stringResource(R.string.terminal_waiting_host_key)
                                             SessionStatus.RECONNECTING ->
-                                                "Reconnecting (attempt ${state.reconnectAttempt})…"
-                                            else -> "Connecting…"
+                                                stringResource(
+                                                    R.string.status_reconnecting_attempt,
+                                                    state.reconnectAttempt,
+                                                )
+                                            else -> stringResource(R.string.terminal_connecting)
                                         },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurface,
@@ -436,12 +477,13 @@ fun TerminalScreen(
                         ) {
                             Column(Modifier.padding(18.dp)) {
                                 Text(
-                                    "Connection lost",
+                                    stringResource(R.string.terminal_connection_lost_title),
                                     style = MaterialTheme.typography.titleMedium,
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Text(
-                                    state.errorMessage ?: "The SSH session is no longer connected.",
+                                    state.error?.let { sessionErrorText(it) }
+                                        ?: stringResource(R.string.terminal_connection_lost_fallback),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -453,8 +495,10 @@ fun TerminalScreen(
                                             containerColor = GreenAccent,
                                             contentColor = Color(0xFF00210F),
                                         ),
-                                    ) { Text("Reconnect") }
-                                    TextButton(onClick = onOpenSessions) { Text("Sessions") }
+                                    ) { Text(stringResource(R.string.action_reconnect)) }
+                                    TextButton(onClick = onOpenSessions) {
+                                        Text(stringResource(R.string.action_sessions))
+                                    }
                                 }
                             }
                         }
@@ -473,7 +517,7 @@ fun TerminalScreen(
                                 modifier = Modifier.size(16.dp),
                             )
                             Spacer(Modifier.width(4.dp))
-                            Text("Latest")
+                            Text(stringResource(R.string.terminal_latest))
                         }
                     }
                 }
@@ -546,7 +590,12 @@ fun TerminalScreen(
                 )
             },
             title = {
-                Text(if (changed) "Host key has changed" else "Unknown host key")
+                Text(
+                    stringResource(
+                        if (changed) R.string.terminal_changed_host_title
+                        else R.string.terminal_unknown_host_title,
+                    ),
+                )
             },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -557,13 +606,13 @@ fun TerminalScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Key type: ${challenge.keyType}",
+                        text = stringResource(R.string.terminal_key_type, challenge.keyType),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        text = "New fingerprint",
+                        text = stringResource(R.string.terminal_new_fingerprint),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -571,7 +620,7 @@ fun TerminalScreen(
                     if (changed && challenge.previousFingerprint != null) {
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "Previously trusted fingerprint",
+                            text = stringResource(R.string.terminal_previous_fingerprint),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -579,16 +628,10 @@ fun TerminalScreen(
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = if (changed) {
-                            "The server presented a different key than the one saved on this device. " +
-                                "This can happen after a server reinstall, but it may also indicate a " +
-                                "man-in-the-middle attack. Verify the fingerprint with your server " +
-                                "administrator before accepting."
-                        } else {
-                            "This host has not been seen before. Verify the fingerprint with the " +
-                                "server administrator or the server console before accepting. " +
-                                "Accepting an unverified key removes protection against interception."
-                        },
+                        text = stringResource(
+                            if (changed) R.string.terminal_changed_host_warning
+                            else R.string.terminal_unknown_host_warning,
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (changed) ErrorRed else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -599,7 +642,10 @@ fun TerminalScreen(
                     onClick = { viewModel.respondToHostKey(challenge.id, true) },
                 ) {
                     Text(
-                        text = if (changed) "Accept new key" else "Accept & connect",
+                        text = stringResource(
+                            if (changed) R.string.terminal_accept_new_key
+                            else R.string.terminal_accept_connect,
+                        ),
                         color = if (changed) ErrorRed else GreenSoft,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -607,7 +653,7 @@ fun TerminalScreen(
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.respondToHostKey(challenge.id, false) }) {
-                    Text("Reject")
+                    Text(stringResource(R.string.action_reject))
                 }
             },
         )
@@ -615,9 +661,9 @@ fun TerminalScreen(
 
     if (confirmClose) {
         ConfirmDialog(
-            title = "Close session?",
-            message = "The SSH connection will be terminated. The terminal output will be lost.",
-            confirmLabel = "Close session",
+            title = stringResource(R.string.terminal_close_title),
+            message = stringResource(R.string.terminal_close_message),
+            confirmLabel = stringResource(R.string.terminal_close_session_menu),
             destructive = true,
             onConfirm = ::closeSession,
             onDismiss = { confirmClose = false },
@@ -630,7 +676,9 @@ fun TerminalScreen(
             onCopy = {
                 viewModel.dumpText().takeIf { it.isNotEmpty() }?.let {
                     clipboard.setText(AnnotatedString(it))
-                    scope.launch { snackbarHost.showSnackbar("Terminal buffer copied") }
+                    scope.launch {
+                        snackbarHost.showSnackbar(context.getString(R.string.terminal_buffer_copied))
+                    }
                 }
             },
             onDismiss = { showBuffer = false },
@@ -663,12 +711,12 @@ private fun BufferDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "Terminal buffer",
+                        stringResource(R.string.terminal_buffer_title),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = onCopy) { Text("Copy all") }
-                    TextButton(onClick = onDismiss) { Text("Close") }
+                    TextButton(onClick = onCopy) { Text(stringResource(R.string.action_copy_all)) }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
                 }
                 Box(
                     modifier = Modifier
@@ -678,7 +726,7 @@ private fun BufferDialog(
                 ) {
                     SelectionContainer {
                         Text(
-                            text = text.ifEmpty { "The terminal buffer is empty." },
+                            text = text.ifEmpty { stringResource(R.string.terminal_buffer_empty) },
                             fontFamily = FontFamily.Monospace,
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -691,3 +739,26 @@ private fun BufferDialog(
 }
 
 private val TerminalBackgroundColor = Color(0xFF070A08)
+
+@Composable
+private fun sessionErrorText(error: SessionError): String = stringResource(
+    when (error) {
+        SessionError.SESSION_UNAVAILABLE -> R.string.error_session_unavailable
+        SessionError.SERVER_DELETED -> R.string.error_server_missing
+        SessionError.NO_CREDENTIALS -> R.string.error_no_credentials
+        SessionError.CREDENTIALS_UNAVAILABLE -> R.string.error_credentials_unavailable
+        SessionError.HOST_KEY_REJECTED -> R.string.error_host_key_rejected
+        SessionError.HOST_KEY_TIMEOUT -> R.string.error_host_key_timeout
+        SessionError.AUTH_FAILED -> R.string.error_auth_failed
+        SessionError.HOST_NOT_FOUND -> R.string.error_host_not_found
+        SessionError.CONNECT_TIMEOUT -> R.string.error_connect_timeout
+        SessionError.CONNECTION_REFUSED -> R.string.error_connection_refused
+        SessionError.NETWORK -> R.string.error_network
+        SessionError.KEY_FORMAT -> R.string.error_key_format
+        SessionError.PROTOCOL -> R.string.error_protocol
+        SessionError.SESSION_ENDED -> R.string.error_session_ended
+        SessionError.CONNECTION_LOST -> R.string.error_connection_lost
+        SessionError.AUTO_RECONNECT_DISABLED -> R.string.error_connection_lost_no_reconnect
+        SessionError.UNKNOWN -> R.string.error_unknown
+    },
+)

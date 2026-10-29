@@ -3,6 +3,7 @@ package dev.sshmobile.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.sshmobile.data.repository.AppSettings
+import dev.sshmobile.data.repository.AppLanguage
 import dev.sshmobile.data.repository.KnownHostRepository
 import dev.sshmobile.data.repository.ServerRepository
 import dev.sshmobile.data.repository.SettingsRepository
@@ -45,6 +46,8 @@ class SettingsViewModel(
         viewModelScope.launch { settingsRepository.setScrollbackLines(value) }
 
     fun setThemeMode(value: ThemeMode) = viewModelScope.launch { settingsRepository.setThemeMode(value) }
+
+    fun setLanguage(value: AppLanguage) = viewModelScope.launch { settingsRepository.setLanguage(value) }
 
     fun clearKnownHosts() = viewModelScope.launch { knownHostRepository.clearAll() }
 

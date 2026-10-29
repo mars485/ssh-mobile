@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.map
 
 enum class ThemeMode { DARK, LIGHT }
 
+enum class AppLanguage { SYSTEM, ENGLISH, RUSSIAN }
+
 data class AppSettings(
     val fontSizeSp: Float = 14f,
     val keepScreenOn: Boolean = true,
@@ -21,6 +23,7 @@ data class AppSettings(
     val autoReconnect: Boolean = true,
     val scrollbackLines: Int = 5000,
     val themeMode: ThemeMode = ThemeMode.DARK,
+    val language: AppLanguage = AppLanguage.SYSTEM,
 )
 
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -34,6 +37,7 @@ class SettingsRepository(private val context: Context) {
         val autoReconnect = booleanPreferencesKey("auto_reconnect")
         val scrollback = intPreferencesKey("scrollback_lines")
         val theme = stringPreferencesKey("theme_mode")
+        val language = stringPreferencesKey("app_language")
     }
 
     val settings: Flow<AppSettings> = context.settingsDataStore.data.map { prefs ->
@@ -45,6 +49,8 @@ class SettingsRepository(private val context: Context) {
             scrollbackLines = prefs[Keys.scrollback] ?: 5000,
             themeMode = runCatching { ThemeMode.valueOf(prefs[Keys.theme] ?: "DARK") }
                 .getOrDefault(ThemeMode.DARK),
+            language = runCatching { AppLanguage.valueOf(prefs[Keys.language] ?: "SYSTEM") }
+                .getOrDefault(AppLanguage.SYSTEM),
         )
     }
 
@@ -72,5 +78,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setThemeMode(value: ThemeMode) {
         context.settingsDataStore.edit { it[Keys.theme] = value.name }
+    }
+
+    suspend fun setLanguage(value: AppLanguage) {
+        context.settingsDataStore.edit { it[Keys.language] = value.name }
     }
 }

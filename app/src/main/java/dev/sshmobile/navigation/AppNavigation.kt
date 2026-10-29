@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -28,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import dev.sshmobile.R
 import dev.sshmobile.ui.servers.DashboardScreen
 import dev.sshmobile.ui.servers.ServerEditScreen
 import dev.sshmobile.ui.sessions.SessionsScreen
@@ -51,15 +53,15 @@ object Routes {
 
 private data class TopLevelDestination(
     val route: String,
-    val label: String,
+    val labelRes: Int,
     val selectedIcon: ImageVector,
     val icon: ImageVector,
 )
 
 private val topLevelDestinations = listOf(
-    TopLevelDestination(Routes.DASHBOARD, "Servers", Icons.Rounded.Dns, Icons.Outlined.Dns),
-    TopLevelDestination(Routes.SESSIONS, "Sessions", Icons.Rounded.Layers, Icons.Outlined.Layers),
-    TopLevelDestination(Routes.SETTINGS, "Settings", Icons.Rounded.Settings, Icons.Outlined.Settings),
+    TopLevelDestination(Routes.DASHBOARD, R.string.nav_servers, Icons.Rounded.Dns, Icons.Outlined.Dns),
+    TopLevelDestination(Routes.SESSIONS, R.string.nav_sessions, Icons.Rounded.Layers, Icons.Outlined.Layers),
+    TopLevelDestination(Routes.SETTINGS, R.string.nav_settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
 )
 
 @Composable
@@ -93,10 +95,10 @@ fun AppNavigation() {
                             icon = {
                                 Icon(
                                     imageVector = if (selected) destination.selectedIcon else destination.icon,
-                                    contentDescription = destination.label,
+                                    contentDescription = stringResource(destination.labelRes),
                                 )
                             },
-                            label = { Text(destination.label) },
+                            label = { Text(stringResource(destination.labelRes)) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.onPrimary,
                                 selectedTextColor = MaterialTheme.colorScheme.primary,

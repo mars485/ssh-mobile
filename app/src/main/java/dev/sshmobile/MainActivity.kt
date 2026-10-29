@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.sshmobile.data.repository.AppSettings
 import dev.sshmobile.data.repository.ThemeMode
 import dev.sshmobile.navigation.AppNavigation
+import dev.sshmobile.ui.AppLocalization
 import dev.sshmobile.ui.LocalAppContainer
 import dev.sshmobile.ui.theme.SshMobileTheme
 
@@ -46,8 +47,10 @@ class MainActivity : ComponentActivity() {
             }
 
             SshMobileTheme(themeMode = settings.themeMode) {
-                CompositionLocalProvider(LocalAppContainer provides container) {
-                    AppNavigation()
+                AppLocalization(language = settings.language) {
+                    CompositionLocalProvider(LocalAppContainer provides container) {
+                        AppNavigation()
+                    }
                 }
             }
         }

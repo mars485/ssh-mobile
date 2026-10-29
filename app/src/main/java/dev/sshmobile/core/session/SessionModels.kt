@@ -13,13 +13,34 @@ enum class SessionStatus {
     CLOSED,
 }
 
+/** Platform-neutral error codes, localized by the UI. */
+enum class SessionError {
+    SESSION_UNAVAILABLE,
+    SERVER_DELETED,
+    NO_CREDENTIALS,
+    CREDENTIALS_UNAVAILABLE,
+    HOST_KEY_REJECTED,
+    HOST_KEY_TIMEOUT,
+    AUTH_FAILED,
+    HOST_NOT_FOUND,
+    CONNECT_TIMEOUT,
+    CONNECTION_REFUSED,
+    NETWORK,
+    KEY_FORMAT,
+    PROTOCOL,
+    SESSION_ENDED,
+    CONNECTION_LOST,
+    AUTO_RECONNECT_DISABLED,
+    UNKNOWN,
+}
+
 data class TerminalSessionState(
     val id: String,
     val serverId: Long,
     val serverName: String = "SSH session",
     val hostLabel: String = "",
     val status: SessionStatus = SessionStatus.CONNECTING,
-    val errorMessage: String? = null,
+    val error: SessionError? = null,
     val hostKeyPrompt: HostKeyChallenge? = null,
     val connectedAt: Long? = null,
     val reconnectAttempt: Int = 0,

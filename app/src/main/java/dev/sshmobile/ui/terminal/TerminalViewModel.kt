@@ -1,6 +1,7 @@
 package dev.sshmobile.ui.terminal
 
 import androidx.lifecycle.ViewModel
+import dev.sshmobile.core.session.SessionError
 import dev.sshmobile.core.session.SessionStatus
 import dev.sshmobile.core.session.SshSessionManager
 import dev.sshmobile.core.session.TerminalSessionHandle
@@ -24,7 +25,7 @@ class TerminalViewModel(
             serverId = 0,
             serverName = "Session unavailable",
             status = SessionStatus.CLOSED,
-            errorMessage = "This session is no longer available. Open the server again from the dashboard.",
+            error = SessionError.SESSION_UNAVAILABLE,
         ),
     )
 

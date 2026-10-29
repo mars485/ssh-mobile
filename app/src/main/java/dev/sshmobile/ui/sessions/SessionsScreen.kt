@@ -41,11 +41,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.sshmobile.R
 import dev.sshmobile.core.session.SessionInfo
 import dev.sshmobile.core.session.SessionStatus
 import dev.sshmobile.ui.LocalAppContainer
@@ -83,12 +86,16 @@ fun SessionsScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Sessions")
+                        Text(stringResource(R.string.sessions_title))
                         Text(
                             text = if (sessions.isEmpty()) {
-                                "No open connections"
+                                stringResource(R.string.sessions_no_connections)
                             } else {
-                                "${sessions.size} open connection${if (sessions.size == 1) "" else "s"}"
+                                pluralStringResource(
+                                    R.plurals.sessions_open_connections,
+                                    sessions.size,
+                                    sessions.size,
+                                )
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -98,7 +105,10 @@ fun SessionsScreen(
                 actions = {
                     if (sessions.isNotEmpty()) {
                         IconButton(onClick = { confirmCloseAll = true }) {
-                            Icon(Icons.Outlined.DeleteSweep, contentDescription = "Close all sessions")
+                            Icon(
+                                Icons.Outlined.DeleteSweep,
+                                contentDescription = stringResource(R.string.sessions_close_all_desc),
+                            )
                         }
                     }
                 },
@@ -111,9 +121,8 @@ fun SessionsScreen(
     ) { padding ->
         if (sessions.isEmpty()) {
             EmptyState(
-                title = "No active sessions",
-                message = "Open a server from the dashboard to start an interactive SSH session. " +
-                    "Sessions stay connected while you move between screens.",
+                title = stringResource(R.string.sessions_empty_title),
+                message = stringResource(R.string.sessions_empty_message),
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
@@ -141,9 +150,9 @@ fun SessionsScreen(
 
     if (confirmCloseAll) {
         ConfirmDialog(
-            title = "Close all sessions?",
-            message = "All ${sessions.size} SSH connections will be terminated.",
-            confirmLabel = "Close all",
+            title = stringResource(R.string.sessions_close_all_title),
+            message = stringResource(R.string.sessions_close_all_message, sessions.size),
+            confirmLabel = stringResource(R.string.action_close_all),
             destructive = true,
             onConfirm = viewModel::closeAll,
             onDismiss = { confirmCloseAll = false },
@@ -228,21 +237,25 @@ private fun SessionCard(
                 }
             }
             IconButton(onClick = onClose) {
-                Icon(Icons.Outlined.Close, contentDescription = "Close session")
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = stringResource(R.string.sessions_close_desc),
+                )
             }
         }
     }
 }
 
+@Composable
 fun formatDuration(millis: Long): String {
-    if (millis < 0) return "0s"
+    if (millis < 0) return stringResource(R.string.sessions_duration_seconds, 0)
     val totalSeconds = millis / 1000
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
     return when {
-        hours > 0 -> "${hours}h ${minutes}m"
-        minutes > 0 -> "${minutes}m ${seconds}s"
-        else -> "${seconds}s"
+        hours > 0 -> stringResource(R.string.sessions_duration_hours, hours, minutes)
+        minutes > 0 -> stringResource(R.string.sessions_duration_minutes, minutes, seconds)
+        else -> stringResource(R.string.sessions_duration_seconds, seconds)
     }
 }

@@ -52,12 +52,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.sshmobile.R
 import dev.sshmobile.core.session.SessionStatus
 import dev.sshmobile.domain.model.AuthType
 import dev.sshmobile.domain.model.Server
@@ -93,13 +96,16 @@ fun DashboardScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("SSH Mobile", fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.app_name), fontWeight = FontWeight.SemiBold)
                         Text(
                             text = when {
-                                state.loading -> "Loading servers…"
-                                state.totalServers == 0 -> "No saved servers"
-                                state.totalServers == 1 -> "1 saved server"
-                                else -> "${state.totalServers} saved servers"
+                                state.loading -> stringResource(R.string.dashboard_loading_servers)
+                                state.totalServers == 0 -> stringResource(R.string.dashboard_no_saved_servers)
+                                else -> pluralStringResource(
+                                    R.plurals.dashboard_saved_servers,
+                                    state.totalServers,
+                                    state.totalServers,
+                                )
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -125,7 +131,7 @@ fun DashboardScreen(
                 containerColor = GreenAccent,
                 contentColor = Color(0xFF00210F),
             ) {
-                Icon(Icons.Rounded.Add, contentDescription = "Add server")
+                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.dashboard_add_server))
             }
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -141,7 +147,7 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search by name, host or group") },
+                placeholder = { Text(stringResource(R.string.dashboard_search_placeholder)) },
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
@@ -149,9 +155,9 @@ fun DashboardScreen(
 
             if (state.isEmpty) {
                 EmptyState(
-                    title = "No servers yet",
-                    message = "Add your first SSH server to open an interactive terminal from your phone.",
-                    actionLabel = "Add server",
+                    title = stringResource(R.string.dashboard_empty_title),
+                    message = stringResource(R.string.dashboard_empty_message),
+                    actionLabel = stringResource(R.string.dashboard_add_server),
                     onAction = onAddServer,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -160,8 +166,8 @@ fun DashboardScreen(
 
             if (state.noResults) {
                 EmptyState(
-                    title = "Nothing found",
-                    message = "No server matches \"${state.query}\".",
+                    title = stringResource(R.string.dashboard_no_results_title),
+                    message = stringResource(R.string.dashboard_no_results_message, state.query),
                     modifier = Modifier.fillMaxSize(),
                 )
                 return@Column
@@ -172,7 +178,7 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
             ) {
                 if (state.favorites.isNotEmpty()) {
-                    item { SectionLabel("Favorites") }
+                    item { SectionLabel(stringResource(R.string.dashboard_favorites)) }
                     items(state.favorites, key = { it.id }) { server ->
                         ServerCard(
                             server = server,
@@ -188,7 +194,7 @@ fun DashboardScreen(
                 state.groups.forEach { group ->
                     if (group.servers.isNotEmpty()) {
                         item(key = "header-${group.name ?: "ungrouped"}") {
-                            SectionLabel(group.name ?: "Ungrouped")
+                            SectionLabel(group.name ?: stringResource(R.string.dashboard_ungrouped))
                         }
                         items(group.servers, key = { it.id }) { server ->
                             ServerCard(
@@ -208,9 +214,9 @@ fun DashboardScreen(
 
     deleteTarget?.let { target ->
         ConfirmDialog(
-            title = "Delete server?",
-            message = "Remove \"${target.name}\" and its stored credentials? This cannot be undone.",
-            confirmLabel = "Delete",
+            title = stringResource(R.string.dashboard_delete_title),
+            message = stringResource(R.string.dashboard_delete_message, target.name),
+            confirmLabel = stringResource(R.string.action_delete),
             destructive = true,
             onConfirm = { viewModel.delete(target) },
             onDismiss = { deleteTarget = null },
@@ -274,17 +280,23 @@ private fun ServerCard(
                 IconButton(onClick = onToggleFavorite) {
                     Icon(
                         imageVector = if (server.favorite) Icons.Rounded.Star else Icons.Outlined.StarOutline,
-                        contentDescription = if (server.favorite) "Remove from favorites" else "Add to favorites",
+                        contentDescription = stringResource(
+                            if (server.favorite) R.string.dashboard_remove_favorite
+                            else R.string.dashboard_add_favorite,
+                        ),
                         tint = if (server.favorite) GreenSoft else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = "Server actions")
+                        Icon(
+                            Icons.Rounded.MoreVert,
+                            contentDescription = stringResource(R.string.dashboard_server_actions),
+                        )
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(
-                            text = { Text("Edit") },
+                            text = { Text(stringResource(R.string.action_edit)) },
                             leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
                             onClick = {
                                 menuOpen = false
@@ -292,7 +304,14 @@ private fun ServerCard(
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text(if (server.favorite) "Remove favorite" else "Add to favorites") },
+                            text = {
+                                Text(
+                                    stringResource(
+                                        if (server.favorite) R.string.dashboard_remove_favorite
+                                        else R.string.dashboard_add_favorite,
+                                    ),
+                                )
+                            },
                             leadingIcon = {
                                 Icon(
                                     if (server.favorite) Icons.Outlined.StarOutline else Icons.Rounded.Star,
@@ -305,7 +324,7 @@ private fun ServerCard(
                             },
                         )
                         DropdownMenuItem(
-                            text = { Text("Delete") },
+                            text = { Text(stringResource(R.string.action_delete)) },
                             leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
                             onClick = {
                                 menuOpen = false
@@ -323,7 +342,11 @@ private fun ServerCard(
             ) {
                 if (server.groupName != null) AccentTag(server.groupName)
                 AccentTag(
-                    if (server.authType == AuthType.PRIVATE_KEY) "key auth" else "password auth",
+                    if (server.authType == AuthType.PRIVATE_KEY) {
+                        stringResource(R.string.auth_key_tag)
+                    } else {
+                        stringResource(R.string.auth_password_tag)
+                    },
                     Modifier,
                 )
                 Spacer(Modifier.weight(1f))
@@ -349,7 +372,7 @@ private fun ServerCard(
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            text = "Tap to connect",
+                            text = stringResource(R.string.dashboard_tap_to_connect),
                             style = MaterialTheme.typography.labelSmall,
                             color = GreenSoft,
                         )

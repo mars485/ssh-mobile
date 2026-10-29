@@ -49,12 +49,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.sshmobile.BuildConfig
+import dev.sshmobile.R
+import dev.sshmobile.data.repository.AppLanguage
 import dev.sshmobile.data.repository.ThemeMode
 import dev.sshmobile.ui.LocalAppContainer
 import dev.sshmobile.ui.SimpleViewModelFactory
@@ -89,11 +93,12 @@ fun SettingsScreen(
     var confirmWipe by remember { mutableStateOf(false) }
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val wipedMessage = stringResource(R.string.settings_wiped)
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                 ),
@@ -109,11 +114,15 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
         ) {
-            SectionLabel("Terminal")
+            SectionLabel(stringResource(R.string.settings_terminal_section))
             SettingsCard {
                 Column(Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Font size", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                        Text(
+                            stringResource(R.string.settings_font_size),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
                         Text(
                             text = "${fontPreview.toInt()} sp",
                             style = MaterialTheme.typography.bodySmall,
@@ -144,25 +153,25 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(8.dp))
             SettingsToggle(
-                title = "Keep screen on",
-                subtitle = "Prevent the display from sleeping while a terminal is open.",
+                title = stringResource(R.string.settings_keep_screen_on_title),
+                subtitle = stringResource(R.string.settings_keep_screen_on_subtitle),
                 checked = settings.keepScreenOn,
                 onCheckedChange = viewModel::setKeepScreenOn,
             )
             SettingsToggle(
-                title = "Block screenshots",
-                subtitle = "Hide terminal contents in the recent-apps preview and block screenshots.",
+                title = stringResource(R.string.settings_block_screenshots_title),
+                subtitle = stringResource(R.string.settings_block_screenshots_subtitle),
                 checked = settings.blockScreenshots,
                 onCheckedChange = viewModel::setBlockScreenshots,
             )
             SettingsToggle(
-                title = "Automatic reconnect",
-                subtitle = "Retry with backoff when an established connection drops unexpectedly.",
+                title = stringResource(R.string.settings_auto_reconnect_title),
+                subtitle = stringResource(R.string.settings_auto_reconnect_subtitle),
                 checked = settings.autoReconnect,
                 onCheckedChange = viewModel::setAutoReconnect,
             )
 
-            SectionLabel("Scrollback")
+            SectionLabel(stringResource(R.string.settings_scrollback_section))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(1_000, 5_000, 10_000, 25_000).forEach { lines ->
                     FilterChip(
@@ -173,27 +182,52 @@ fun SettingsScreen(
                 }
             }
             Text(
-                text = "Applies to new sessions. Current sessions keep their buffer size.",
+                text = stringResource(R.string.settings_scrollback_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 6.dp),
             )
 
-            SectionLabel("Appearance")
+            SectionLabel(stringResource(R.string.settings_appearance_section))
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = settings.themeMode == ThemeMode.DARK,
                     onClick = { viewModel.setThemeMode(ThemeMode.DARK) },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                ) { Text("Dark") }
+                ) { Text(stringResource(R.string.settings_theme_dark)) }
                 SegmentedButton(
                     selected = settings.themeMode == ThemeMode.LIGHT,
                     onClick = { viewModel.setThemeMode(ThemeMode.LIGHT) },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                ) { Text("Light") }
+                ) { Text(stringResource(R.string.settings_theme_light)) }
             }
 
-            SectionLabel("Security")
+            SectionLabel(stringResource(R.string.settings_language_section))
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = settings.language == AppLanguage.SYSTEM,
+                    onClick = { viewModel.setLanguage(AppLanguage.SYSTEM) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                ) { Text(stringResource(R.string.settings_language_system)) }
+                SegmentedButton(
+                    selected = settings.language == AppLanguage.ENGLISH,
+                    onClick = { viewModel.setLanguage(AppLanguage.ENGLISH) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                ) { Text(stringResource(R.string.settings_language_english)) }
+                SegmentedButton(
+                    selected = settings.language == AppLanguage.RUSSIAN,
+                    onClick = { viewModel.setLanguage(AppLanguage.RUSSIAN) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                ) { Text(stringResource(R.string.settings_language_russian)) }
+            }
+            Text(
+                text = stringResource(R.string.settings_language_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+
+            SectionLabel(stringResource(R.string.settings_security_section))
             SettingsCard {
                 Column {
                     Row(
@@ -206,12 +240,19 @@ fun SettingsScreen(
                         Icon(Icons.Outlined.Security, contentDescription = null, tint = GreenSoft)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("Known hosts", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                stringResource(R.string.settings_known_hosts),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
                             Text(
                                 text = if (knownHostCount == 0) {
-                                    "No trusted host keys yet"
+                                    stringResource(R.string.settings_known_hosts_empty)
                                 } else {
-                                    "$knownHostCount trusted host key${if (knownHostCount == 1) "" else "s"}"
+                                    pluralStringResource(
+                                        R.plurals.settings_known_hosts_count,
+                                        knownHostCount,
+                                        knownHostCount,
+                                    )
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -234,12 +275,12 @@ fun SettingsScreen(
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
-                                "Wipe all app data",
+                                stringResource(R.string.settings_wipe_title),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.error,
                             )
                             Text(
-                                "Deletes servers, stored credentials and trusted host keys.",
+                                stringResource(R.string.settings_wipe_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -248,7 +289,7 @@ fun SettingsScreen(
                 }
             }
 
-            SectionLabel("File manager")
+            SectionLabel(stringResource(R.string.settings_file_manager_section))
             SettingsCard {
                 Row(
                     modifier = Modifier
@@ -260,9 +301,12 @@ fun SettingsScreen(
                     Icon(Icons.Outlined.Folder, contentDescription = null, tint = GreenSoft)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("SFTP", style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "Browsing, transfers and remote editing arrive in v0.3.",
+                            stringResource(R.string.settings_sftp_title),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            stringResource(R.string.settings_sftp_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -271,22 +315,22 @@ fun SettingsScreen(
                 }
             }
 
-            SectionLabel("About")
+            SectionLabel(stringResource(R.string.settings_about_section))
             SettingsCard {
                 Column(Modifier.padding(14.dp)) {
-                    Text("SSH Mobile ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        stringResource(R.string.settings_about_version, BuildConfig.VERSION_NAME),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "A native Android SSH client built with Kotlin, Jetpack Compose and SSHJ. " +
-                            "Secrets are encrypted with the Android Keystore; host keys are verified " +
-                            "on every connection and changes require explicit confirmation.",
+                        stringResource(R.string.settings_about_text),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "Terminal emulator: VT100/xterm implementation included in this project " +
-                            "(no GPL terminal code). SSH transport: SSHJ 0.41 (Apache-2.0).",
+                        stringResource(R.string.settings_about_licenses),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -295,7 +339,7 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(28.dp))
             Text(
-                text = "Remember: automatic reconnect never bypasses host-key verification.",
+                text = stringResource(R.string.settings_security_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 24.dp),
@@ -305,14 +349,13 @@ fun SettingsScreen(
 
     if (confirmWipe) {
         ConfirmDialog(
-            title = "Wipe all app data?",
-            message = "Every saved server, credential and trusted host key will be deleted. " +
-                "This cannot be undone and open sessions may stop working.",
-            confirmLabel = "Wipe everything",
+            title = stringResource(R.string.settings_wipe_dialog_title),
+            message = stringResource(R.string.settings_wipe_dialog_message),
+            confirmLabel = stringResource(R.string.settings_wipe_confirm),
             destructive = true,
             onConfirm = {
                 viewModel.wipeAllData {
-                    scope.launch { snackbarHost.showSnackbar("All local data wiped") }
+                    scope.launch { snackbarHost.showSnackbar(wipedMessage) }
                 }
             },
             onDismiss = { confirmWipe = false },

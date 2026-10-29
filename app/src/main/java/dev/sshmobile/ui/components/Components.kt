@@ -24,10 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.sshmobile.R
 import dev.sshmobile.core.session.SessionStatus
 import dev.sshmobile.ui.theme.ErrorRed
 import dev.sshmobile.ui.theme.GreenAccent
@@ -53,14 +55,17 @@ fun StatusDot(status: SessionStatus, modifier: Modifier = Modifier, size: Int = 
     )
 }
 
-fun statusLabel(status: SessionStatus): String = when (status) {
-    SessionStatus.CONNECTING -> "Connecting"
-    SessionStatus.VERIFYING_HOST_KEY -> "Verifying host key"
-    SessionStatus.CONNECTED -> "Connected"
-    SessionStatus.RECONNECTING -> "Reconnecting"
-    SessionStatus.DISCONNECTED -> "Disconnected"
-    SessionStatus.CLOSED -> "Closed"
-}
+@Composable
+fun statusLabel(status: SessionStatus): String = stringResource(
+    when (status) {
+        SessionStatus.CONNECTING -> R.string.status_connecting
+        SessionStatus.VERIFYING_HOST_KEY -> R.string.status_verifying_host_key
+        SessionStatus.CONNECTED -> R.string.status_connected
+        SessionStatus.RECONNECTING -> R.string.status_reconnecting
+        SessionStatus.DISCONNECTED -> R.string.status_disconnected
+        SessionStatus.CLOSED -> R.string.status_closed
+    },
+)
 
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
@@ -138,7 +143,7 @@ fun ConfirmDialog(
             ) { Text(confirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }

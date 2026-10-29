@@ -52,18 +52,28 @@ data class ServerDraft(
     val keySummary: String? = null,
 )
 
+enum class ValidationError {
+    NAME_REQUIRED,
+    HOST_REQUIRED,
+    HOST_SPACES,
+    PORT_INVALID,
+    USERNAME_REQUIRED,
+    PASSWORD_REQUIRED,
+    PRIVATE_KEY_REQUIRED,
+}
+
 object ServerValidation {
-    fun validate(draft: ServerDraft, hasStoredSecret: Boolean): List<String> {
-        val errors = mutableListOf<String>()
-        if (draft.name.isBlank()) errors += "Name is required"
-        if (draft.host.isBlank()) errors += "Host is required"
-        if (draft.host.any { it.isWhitespace() }) errors += "Host must not contain spaces"
-        if (draft.port !in 1..65535) errors += "Port must be between 1 and 65535"
-        if (draft.username.isBlank()) errors += "Username is required"
+    fun validate(draft: ServerDraft, hasStoredSecret: Boolean): List<ValidationError> {
+        val errors = mutableListOf<ValidationError>()
+        if (draft.name.isBlank()) errors += ValidationError.NAME_REQUIRED
+        if (draft.host.isBlank()) errors += ValidationError.HOST_REQUIRED
+        if (draft.host.any { it.isWhitespace() }) errors += ValidationError.HOST_SPACES
+        if (draft.port !in 1..65535) errors += ValidationError.PORT_INVALID
+        if (draft.username.isBlank()) errors += ValidationError.USERNAME_REQUIRED
         if (draft.newSecret.isNullOrBlank() && !hasStoredSecret) {
             errors += when (draft.authType) {
-                AuthType.PASSWORD -> "Password is required"
-                AuthType.PRIVATE_KEY -> "Private key is required"
+                AuthType.PASSWORD -> ValidationError.PASSWORD_REQUIRED
+                AuthType.PRIVATE_KEY -> ValidationError.PRIVATE_KEY_REQUIRED
             }
         }
         return errors
