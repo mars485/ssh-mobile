@@ -1,4 +1,4 @@
-# SSH Mobile — SSH-клиент для Android (v0.1.1)
+# SSH Mobile — SSH-клиент для Android (v0.1.2)
 
 Нативный SSH-клиент для Android 10+ с интерактивным терминалом, менеджером серверов,
 проверкой host key и шифрованием секретов через Android Keystore.
@@ -21,7 +21,7 @@
 
 ## Статус
 
-- Исходный код **v0.1.1** готов, debug и release APK собраны.
+- Исходный код **v0.1.2** готов, debug и release APK собраны.
 - 42 автоматических теста (JVM + Robolectric) проходят, включая реальное SSH-рукопожатие
   с in-process сервером Apache MINA SSHD и проверку русских/английских ресурсов и плюрализации.
 - Проверено на эмуляторе **Android 15 (API 35)**: установка, вход по паролю, вход по
@@ -133,14 +133,14 @@ keytool -genkeypair -keystore C:/secure/sshmobile-release.jks -alias sshmobile \
 
 | Артефакт | Путь | Размер |
 |---|---|---|
-| Debug APK | `dist/ssh-mobile-0.1.1-debug.apk` | 66.95 МБ (debug, без shrink) |
-| Release APK (подписан) | `dist/ssh-mobile-0.1.1-release.apk` | 9.66 МБ |
+| Debug APK | `dist/ssh-mobile-0.1.2-debug.apk` | 66.95 МБ (debug, без shrink) |
+| Release APK (подписан) | `dist/ssh-mobile-0.1.2-release.apk` | 9.66 МБ |
 
 SHA-256:
 
 ```
-release: 9CE215599E90D9558C831B4DF85647EE544D66F1E10C0F9BF04848632E7E2BB5
-debug:   0D27681656A1F0E8FBD25B8C63B91B5C7255B6B03F0A13C0CCF82B2DED02C1DD
+release: A0A0A0303683297B278D8901744AC17AFC2C7DF6469EBDF3478E4D7ED31AF851
+debug:   D66B6C93768510CC2AFB668FD448F965C150ADC843279D64B4EA73391E42DCBE
 ```
 
 Копии также лежат в `dist/`; контрольные суммы — `dist/SHA256SUMS.txt`.
