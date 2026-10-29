@@ -94,9 +94,9 @@ fingerprint host key → выполнить echo hello / htop / vim → откр
 |---|---|---|
 | APK | `dist/ssh-mobile-0.1.2-release.apk` | 10 133 592 байт (9.66 МиБ) |
 | Иконка | `store/icon-512.png` | 512×512 |
-| Изображение для карточки | `store/feature-graphic-1024x500.png` | 1024×500 |
-| Скриншот 1 | `store/screenshots/01-dashboard-ru.png` | 1080×2412 |
-| Скриншот 2 | `store/screenshots/02-settings-ru.png` | 1080×2412 |
-| Скриншот 3 | `store/screenshots/03-terminal.png` | 1080×2400 |
+| Изображение для карточки | `store/feature-graphic-1024x500.png` | 1024×500 (только на страницу приложения, не в скриншоты) |
+| Скриншот 1 | `store/screenshots/rustore/01-dashboard-ru.png` | 1080×1920 |
+| Скриншот 2 | `store/screenshots/rustore/02-settings-ru.png` | 1080×1920 |
+| Скриншот 3 | `store/screenshots/rustore/03-terminal.png` | 1080×1920 |
 
 SHA-256 APK: `A0A0A0303683297B278D8901744AC17AFC2C7DF6469EBDF3478E4D7ED31AF851`

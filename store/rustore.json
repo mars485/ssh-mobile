@@ -16,9 +16,9 @@
     "apk": "dist/ssh-mobile-0.1.2-release.apk",
     "icon": "store/icon-512.png",
     "screenshots": [
-      "store/screenshots/01-dashboard-ru.png",
-      "store/screenshots/02-settings-ru.png",
-      "store/screenshots/03-terminal.png"
+      "store/screenshots/rustore/01-dashboard-ru.png",
+      "store/screenshots/rustore/02-settings-ru.png",
+      "store/screenshots/rustore/03-terminal.png"
     ]
   }
 }
