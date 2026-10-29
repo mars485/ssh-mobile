@@ -38,6 +38,8 @@
 param(
     [string]$Token,
     [string]$TokenFile,
+    [string]$KeyId,
+    [string]$KeyFile,
     [string]$Config,
     [int]$VersionId = 0,
     [switch]$SkipModeration,
@@ -51,19 +53,78 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 $ApiBase = 'https://public-api-m.rustore.ru/public'
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 if (-not $Config) { $Config = Join-Path $Root 'store\rustore.json' }
-if (-not $TokenFile) { $TokenFile = Join-Path $env:TEMP 'rustore-token.txt' }
 
 function Write-Step([string]$Text) { Write-Host "`n== $Text" -ForegroundColor Cyan }
 function Write-Ok([string]$Text) { Write-Host "   OK: $Text" -ForegroundColor Green }
 
-# --- токен -------------------------------------------------------------------
+# --- авторизация -------------------------------------------------------------
+
+$TmpDir = Join-Path $env:TEMP 'opencode'
+$tokenCandidates = @((Join-Path $TmpDir 'rustore-token.txt'), (Join-Path $env:TEMP 'rustore-token.txt'))
+$keyCandidates = @((Join-Path $TmpDir 'rustore-key.txt'), (Join-Path $env:TEMP 'rustore-key.txt'))
+if ($TokenFile) { $tokenCandidates = @($TokenFile) + $tokenCandidates }
 
 if (-not $Token) { $Token = $env:RUSTORE_TOKEN }
-if (-not $Token -and (Test-Path $TokenFile)) {
-    $Token = (Get-Content $TokenFile -TotalCount 1).Trim()
+if (-not $KeyFile) { $KeyFile = $env:RUSTORE_KEY_FILE }
+if (-not $KeyId) { $KeyId = $env:RUSTORE_KEY_ID }
+
+# Файл с ключом RuStore содержит Base64 PKCS#8 (начинается с MII...), а не токен.
+foreach ($f in ($tokenCandidates + $keyCandidates)) {
+    if (-not (Test-Path $f)) { continue }
+    $first = ''
+    $line = Get-Content $f -TotalCount 1
+    if ($line) { $first = ([string]$line).Trim() }
+    if (-not $first) { continue }
+    if ($first -match '^MII[A-Za-z0-9+/]{40,}={0,2}$') {
+        if (-not $KeyFile) { $KeyFile = $f }
+    } elseif (-not $Token) {
+        $Token = $first
+    }
 }
-if (-not $Token) {
-    throw "Нет Public-Token. Укажите -Token, переменную RUSTORE_TOKEN или файл $TokenFile."
+
+if (-not $KeyId) {
+    foreach ($f in @((Join-Path $TmpDir 'rustore-keyid.txt'), (Join-Path $env:TEMP 'rustore-keyid.txt'))) {
+        if (Test-Path $f) {
+            $line = Get-Content $f -TotalCount 1
+            if ($line) { $KeyId = ([string]$line).Trim(); break }
+        }
+    }
+}
+
+function Get-RuStoreJwe([string]$KeyId, [string]$KeyFile) {
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        throw 'Для подписи запроса авторизации (SHA512withRSA) нужен Node.js.'
+    }
+    $helper = Join-Path $PSScriptRoot 'rustore-auth.js'
+    $body = & node $helper $KeyId $KeyFile 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Не удалось подписать запрос авторизации: $($body -join ' ')" }
+    $body = ($body -join '').Trim()
+
+    $bodyFile = Join-Path $env:TEMP 'rustore-auth-body.json'
+    [System.IO.File]::WriteAllText($bodyFile, $body, (New-Object System.Text.UTF8Encoding($false)))
+
+    $raw = & curl.exe -sS -X POST "$ApiBase/auth" -H 'Content-Type: application/json' `
+        -H 'Accept: application/json' --data-binary "@$bodyFile" 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "curl не смог запросить токен: $raw" }
+
+    $json = $raw | ConvertFrom-Json
+    if ($json.code -ne 'OK' -or -not $json.body.jwe) {
+        throw "RuStore не выдал токен: $($json.code) $($json.message)"
+    }
+    return [string]$json.body.jwe
+}
+
+if (-not $Token -and $KeyFile -and -not $DryRun) {
+    if (-not $KeyId) {
+        throw "Ключ RuStore найден ($KeyFile), но не указан keyId. Возьмите keyId в консоли RuStore и передайте -KeyId или сохраните в $TmpDir\rustore-keyid.txt."
+    }
+    Write-Step 'Авторизация по ключу'
+    $Token = Get-RuStoreJwe -KeyId $KeyId -KeyFile $KeyFile
+    Write-Ok "JWE-токен получен (keyId $KeyId, действует 15 минут)"
+}
+
+if (-not $Token -and -not $DryRun) {
+    throw "Нет данных для авторизации. Нужен Public-Token (-Token / RUSTORE_TOKEN) или ключ RuStore с keyId (-KeyFile, -KeyId)."
 }
 
 # --- конфиг ------------------------------------------------------------------

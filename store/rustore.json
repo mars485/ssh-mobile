@@ -9,7 +9,7 @@
   "moderInfo": "SSH-клиент без рекламы, аналитики и покупок. Данные только на устройстве, ключи в Keystore. Демо-сервера нет: docs/TESTING.md. Проверка: сервер, host key, echo/htop, смена языка.",
   "publishType": "MANUAL",
   "developerContacts": {
-    "email": "TODO@example.com",
+    "email": "info@itgsystem.ru",
     "website": "https://github.com/mars485/ssh-mobile"
   },
   "assets": {
