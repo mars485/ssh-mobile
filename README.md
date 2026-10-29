@@ -1,4 +1,4 @@
-# SSH Mobile — SSH-клиент для Android (MVP v0.1)
+# SSH Mobile — SSH-клиент для Android (v0.1.1)
 
 Нативный SSH-клиент для Android 10+ с интерактивным терминалом, менеджером серверов,
 проверкой host key и шифрованием секретов через Android Keystore.
@@ -15,15 +15,22 @@
 |---|---|---|
 | ![](docs/screenshots/htop.png) | ![](docs/screenshots/vim.png) | ![](docs/screenshots/server-key.png) |
 
+| Русский интерфейс | Настройки |
+|---|---|
+| ![](docs/screenshots/dashboard-ru.png) | ![](docs/screenshots/settings-ru.png) |
+
 ## Статус
 
-- Исходный код MVP v0.1 готов, debug и release APK собраны.
-- 40 автоматических тестов (JVM + Robolectric) проходят, включая реальное SSH-рукопожатие
-  с in-process сервером Apache MINA SSHD.
+- Исходный код **v0.1.1** готов, debug и release APK собраны.
+- 42 автоматических теста (JVM + Robolectric) проходят, включая реальное SSH-рукопожатие
+  с in-process сервером Apache MINA SSHD и проверку русских/английских ресурсов и плюрализации.
 - Проверено на эмуляторе **Android 15 (API 35)**: установка, вход по паролю, вход по
   SSH-ключу (импорт из файла), host-key confirmation с совпадающим fingerprint,
   интерактивный bash, htop, vim, resize PTY, две одновременные сессии.
-- Физического Android-устройства в среде нет; выводы об устройстве ограничены эмулятором.
+- Release APK установлен на физическое устройство **HONOR LLY-LX1 (Android 14)**;
+  проверены запуск, отсутствие падений, русский интерфейс и системная локализация.
+- Поддерживаются русский и английский языки; язык выбирается в настройках или берётся
+  из системы.
 
 ## Реализованные функции
 
@@ -36,6 +43,14 @@
 - Импорт приватного ключа через системный файловый picker (SAF) с предварительной проверкой
   формата/пароля и показом типа ключа и fingerprint.
 - Хранимые секреты не показываются обратно в UI; при редактировании поле можно оставить пустым.
+- Форма не перекрывается экранной клавиатурой: контент прокручивается и учитывает IME insets.
+
+### Локализация
+- Русский и английский интерфейс, тёмная/светлая тема.
+- Выбор языка в Settings: «Системный», English, Русский; применяется сразу, сохраняется
+  между запусками.
+- Все строки вынесены в ресурсы (`values` / `values-ru`), включая ошибки, диалоги host key
+  и валидацию формы.
 
 ### SSH-терминал
 - Полноценная интерактивная shell-сессия с PTY (`xterm-256color`).
@@ -118,17 +133,24 @@ keytool -genkeypair -keystore C:/secure/sshmobile-release.jks -alias sshmobile \
 
 | Артефакт | Путь | Размер |
 |---|---|---|
-| Debug APK | `app/build/outputs/apk/debug/app-debug.apk` | ~67 МБ (debug, без shrink) |
-| Release APK (подписан) | `app/build/outputs/apk/release/app-release.apk` | ~9.6 МБ |
+| Debug APK | `dist/ssh-mobile-0.1.1-debug.apk` | 66.95 МБ (debug, без shrink) |
+| Release APK (подписан) | `dist/ssh-mobile-0.1.1-release.apk` | 9.66 МБ |
 
 SHA-256:
 
 ```
-release: C7E6A9E8F78142169E05E0E7FA5D1D8307F3E9F439FBF51A7374657B4D4F5E80
-debug:   B71D958088833278F97B6C311F1D647266654A21D73E2FFD1492C30BAFA8F9A0
+release: 9CE215599E90D9558C831B4DF85647EE544D66F1E10C0F9BF04848632E7E2BB5
+debug:   0D27681656A1F0E8FBD25B8C63B91B5C7255B6B03F0A13C0CCF82B2DED02C1DD
 ```
 
+Копии также лежат в `dist/`; контрольные суммы — `dist/SHA256SUMS.txt`.
 Сертификат release-сборки и подробный отчёт: [docs/TESTING.md](docs/TESTING.md).
+
+### RuStore
+
+Материалы для публикации: [docs/RUSTORE.md](docs/RUSTORE.md), политика
+конфиденциальности: [docs/PRIVACY.md](docs/PRIVACY.md), иконка и скриншоты — в `store/`.
+APK подписан release-ключом; keystore и пароли в репозиторий не входят.
 
 ## Архитектура
 
@@ -151,8 +173,7 @@ app/src/main/java/dev/sshmobile/
     sftp/        информационный экран
     components/  общие composable
     theme/
-  navigation/    Compose Navigation
-  AppContainer.kt / SshMobileApplication.kt / MainActivity.kt
+  navigation/    Compose Navigation  AppContainer.kt / SshMobileApplication.kt / MainActivity.kt
 ```
 
 Сетевой слой скрыт за `SshEngine`; замена SSHJ на другую библиотеку не затрагивает UI,
@@ -164,7 +185,7 @@ app/src/main/java/dev/sshmobile/
 ./gradlew testDebugUnitTest
 ```
 
-40 тестов, 0 падений (на 29.10.2026):
+42 теста, 0 падений (на 29.10.2026):
 
 - 22 теста терминального эмулятора (курсор, SGR, альтернативный экран, UTF-8, wide chars,
   scrollback, resize, DEC charset, OSC, DA/DSR, bracketed paste);
@@ -173,7 +194,8 @@ app/src/main/java/dev/sshmobile/
   смена host key, fingerprint;
 - 8 тестов Room-репозитория серверов (шифрование at rest, обновление без смены секрета,
   избранное, удаление, повреждённый шифротекст);
-- 3 теста known_hosts (per host/port/algorithm, timestamps, удаление).
+- 3 теста known_hosts (per host/port/algorithm, timestamps, удаление);
+- 2 теста локализации: английские/русские строки, плюрализация `one/few/many`.
 
 Проверка на эмуляторе и ручной чек-лист: [docs/TESTING.md](docs/TESTING.md).
 
@@ -206,7 +228,7 @@ app/src/main/java/dev/sshmobile/
   сообщение.
 - Нет паролей, запрашиваемых при каждом подключении: сохранённые креды используются для
   reconnect (это осознанный trade-off).
-- Локализация UI только английская; документы — на русском.
+- Локализация: русский/английский/системный; остальные языки пока не добавлены.
 - Ширина эмодзи/сложных grapheme-кластеров аппроксимируется; редкие шрифты могут смещать сетку.
 
 ## План развития
@@ -230,7 +252,9 @@ app/src/main/java/dev/sshmobile/
 
 ## Лицензии
 
+- Исходный код проекта — [Apache License 2.0](LICENSE).
 - SSHJ — Apache License 2.0.
 - Bouncy Castle — Bouncy Castle License (MIT-подобная).
 - AndroidX/Compose/Room — Apache License 2.0.
+- Полный список: [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 - Терминальный эмулятор и остальной код проекта — собственный, без GPL-зависимостей.

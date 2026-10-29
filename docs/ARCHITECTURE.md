@@ -169,6 +169,18 @@ scrollback, тема.
 - Все долгие операции — в ViewModel/менеджере, не в composable.
 - Темы: тёмная по умолчанию, зелёный акцент `#00E676`, терминал всегда тёмный для контраста.
 
+### Локализация
+
+- Все строки находятся в `res/values/strings.xml` (English) и `res/values-ru/strings.xml`.
+- `AppLanguage` (`SYSTEM`, `ENGLISH`, `RUSSIAN`) хранится в DataStore.
+- `AppLocalization` создаёт `ConfigurationContext` с выбранной локалью и подменяет
+  `LocalContext`/`LocalConfiguration` для Compose. Переключение в Settings применяется
+  сразу и не требует перезапуска.
+- Ошибки сессии передаются из `core/session` как `SessionError` (enum), а не как готовые
+  английские строки; UI переводит их через ресурсы. Валидация формы возвращает
+  `ValidationError`; ViewModel хранит `@StringRes errorRes`.
+- Плюрализация русского языка реализована через Android plurals (`one/few/many/other`).
+
 ## 9. Lifecycle и ограничения
 
 - Сессии принадлежат `Application` (singleton `SshSessionManager`); Activity recreation
