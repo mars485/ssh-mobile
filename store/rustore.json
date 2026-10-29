@@ -1,0 +1,24 @@
+{
+  "appName": "SSH Mobile",
+  "appType": "MAIN",
+  "categories": ["tools"],
+  "ageLegal": "0+",
+  "shortDescription": "Безопасный SSH-клиент с терминалом, ключами и проверкой хост-ключей.",
+  "fullDescription": "SSH Mobile — нативный SSH-клиент для Android с полноценным интерактивным терминалом.\n\nВозможности:\n• менеджер серверов: группы, избранное, поиск, быстрый запуск;\n• вход по паролю или приватному ключу (PEM/OpenSSH, passphrase);\n• терминал VT100/xterm: bash, zsh, htop, vim, nano, less;\n• экранные клавиши Ctrl/Alt/Esc/Tab, стрелки, копирование и вставка;\n• несколько одновременных сессий, переподключение после обрыва;\n• проверка host key с SHA-256 fingerprint и предупреждением при смене ключа;\n• шифрование паролей и ключей через Android Keystore;\n• русский и английский интерфейс, тёмная тема.\n\nПриложение не содержит рекламы, аналитики и трекеров. Данные хранятся только на устройстве. Для работы нужен собственный SSH-сервер — демо-аккаунта нет.\n\nОграничения MVP: SFTP, jump host и port forwarding появятся в следующих версиях.\n\nПриложение с открытым исходным кодом: https://github.com/mars485/ssh-mobile",
+  "whatsNew": "• Исправлено падение при открытии экрана «Новый сервер» после локализации.\n• Импорт SSH-ключа через системный выбор файла снова работает.\n• Форма корректно прокручивается при открытой клавиатуре.\n• Проверено на Android 14 (HONOR) и Android 15 (эмулятор).",
+  "moderInfo": "SSH-клиент без рекламы, аналитики и покупок. Данные только на устройстве, ключи в Keystore. Демо-сервера нет: docs/TESTING.md. Проверка: сервер, host key, echo/htop, смена языка.",
+  "publishType": "MANUAL",
+  "developerContacts": {
+    "email": "TODO@example.com",
+    "website": "https://github.com/mars485/ssh-mobile"
+  },
+  "assets": {
+    "apk": "dist/ssh-mobile-0.1.2-release.apk",
+    "icon": "store/icon-512.png",
+    "screenshots": [
+      "store/screenshots/01-dashboard-ru.png",
+      "store/screenshots/02-settings-ru.png",
+      "store/screenshots/03-terminal.png"
+    ]
+  }
+}

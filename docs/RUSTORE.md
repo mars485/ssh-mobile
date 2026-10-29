@@ -40,11 +40,43 @@
 9. После публикации установите приложение из RuStore на чистое устройство и проверьте
    вход по паролю и по ключу.
 
-Альтернатива ручной загрузке — RuStore Public API: черновик версии создаётся запросом
-`POST /public/v1/application/{packageName}/version`, файл загружается в
-`.../version/{versionId}/apk`, затем версия отправляется на модерацию
-`.../version/{versionId}/commit`. Нужен Public-Token из консоли; без него загрузка
-выполняется через веб-интерфейс.
+### Автоматическая публикация через Public API
+
+Скрипт `scripts/rustore-publish.cmd` (обёртка над `scripts/rustore-publish.ps1`) выполняет
+весь цикл через [RuStore Public API](https://www.rustore.ru/help/work-with-rustore-api/api-upload-publication-app)
+и берёт тексты карточки из `store/rustore.json`:
+
+1. `POST /public/v1/application/dev.sshmobile/version` — создание черновика версии;
+2. `POST .../version/{versionId}/apk?isMainApk=true&servicesType=Unknown` — APK;
+3. `POST .../version/{versionId}/image/icon` — иконка 512×512;
+4. `POST /public/v2/.../version/{versionId}/image/screenshot/PORTRAIT/{n}/SCREENSHOT` —
+   скриншоты по порядку;
+5. `POST .../version/{versionId}/commit?priorityUpdate=0` — отправка на модерацию.
+
+Токен создаётся в консоли RuStore в разделе доступа к API (`Public-Token` показывается
+один раз) и хранится только вне репозитория:
+
+```powershell
+setx RUSTORE_TOKEN "ваш-токен"          # переменная окружения
+# или файл, который читает скрипт:
+"ваш-токен" | Set-Content "$env:TEMP\rustore-token.txt"
+```
+
+Перед запуском заполните `developerContacts.email` в `store/rustore.json` — это
+единственное обязательное поле, которого нет в репозитории. Дальше:
+
+```powershell
+.\scripts\rustore-publish.cmd -DryRun          # проверка конфига и файлов, без запросов
+.\scripts\rustore-publish.cmd                  # черновик + файлы + модерация
+.\scripts\rustore-publish.cmd -SkipModeration  # загрузить, но не отправлять
+.\scripts\rustore-publish.cmd -VersionId 12345 # догрузить в существующий черновик
+```
+
+Ограничения API, учтённые в скрипте: один черновик на приложение; `moderInfo` ≤ 180
+символов; скриншот ≤ 5 МБ; `whatsNew` ≤ 5000 символов; при обновлении `versionCode`
+должен быть больше активного. Если консоль выдаёт вместо `Public-Token` пару
+`keyId` + RSA-ключ, авторизация идёт через `POST /public/auth/` с JWE-подписью — тогда
+нужно доработать скрипт под этот способ.
 
 ## 2. Карточка приложения
 
