@@ -148,9 +148,12 @@ debug:   D66B6C93768510CC2AFB668FD448F965C150ADC843279D64B4EA73391E42DCBE
 
 ### RuStore
 
-Материалы для публикации: [docs/RUSTORE.md](docs/RUSTORE.md), политика
-конфиденциальности: [docs/PRIVACY.md](docs/PRIVACY.md), иконка и скриншоты — в `store/`.
-APK подписан release-ключом; keystore и пароли в репозиторий не входят.
+Материалы и пошаговая инструкция: [docs/RUSTORE.md](docs/RUSTORE.md), готовые тексты
+карточки: [store/listing-ru.md](store/listing-ru.md), политика конфиденциальности:
+[docs/PRIVACY.md](docs/PRIVACY.md), иконка и скриншоты — в `store/`.
+APK подписан release-ключом (схема APK Signature v2); keystore и пароли в репозиторий
+не входят. Перед загрузкой в консоль остаётся указать e-mail поддержки — единственное
+поле карточки, которое нельзя заполнить из репозитория.
 
 ## Архитектура
 
