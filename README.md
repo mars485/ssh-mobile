@@ -296,6 +296,16 @@ app/src/main/java/dev/sshmobile/
 - [ ] Docker (контейнеры, статус, логи), Proxmox VM/LXC, OpenWrt, systemd;
 - [ ] подтверждение опасных операций (удаление, reboot, stop service).
 
+**v1.0 — десктоп (Windows/macOS/Linux)**
+- [ ] вынести SSH/SFTP/терминальное ядро в общий JVM-модуль без зависимостей от Android (sshj уже работает на JVM);
+- [ ] заменить Room на кроссплатформенное хранилище (SQLDelight/JDBC), настройки — в файл;
+- [ ] секреты в системном хранилище ОС: Windows DPAPI/Credential Manager, macOS Keychain, Linux libsecret вместо Android Keystore;
+- [ ] Compose Desktop UI: список серверов, вкладки терминала, панель SFTP, jump host и проброс портов;
+- [ ] терминал под десктоп: аппаратная клавиатура, mouse reporting, посимвольное выделение, поиск по скроллбэку, ресайз окна;
+- [ ] импорт конфигурации, экспортированной из Android-версии (тот же формат без секретов);
+- [ ] дистрибутивы: MSI/MSIX (Windows), DMG (macOS), AppImage/deb (Linux), подпись сборок;
+- [ ] автообновление через GitHub Releases.
+
 **Инфраструктура**
 - [ ] CI на GitHub Actions: сборка и тесты на каждый push;
 - [ ] автоматическая сборка релиза и публикация в RuStore;
