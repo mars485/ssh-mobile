@@ -122,6 +122,16 @@ curl -s https://ssh.itgsystem.ru/robots.txt
 curl -s https://ssh.itgsystem.ru/sitemap-index.xml | head -c 400
 ```
 
+## Внешние зависимости
+
+- **Баннер Keep Android Open** — `https://keepandroidopen.org/banner.js?lang=ru&size=mini&id=my-banner`
+  (GPL-3.0, self-contained, ~14 КБ). Вставляется в `<head>` как `<script is:inline defer>`, контейнер
+  `#my-banner` — первым элементом `<body>`; высота измеряется в `Layout.astro` и пишется в
+  CSS-переменную `--banner-h`, от неё зависят `top` шапки и `scroll-padding-top`.
+  Хост разрешён в CSP (`script-src`) в `nginx/security-headers.conf` — при смене источника правьте оба файла.
+  Скрипт не грузит картинок и шрифтов, но пишет флаг закрытия баннера в `localStorage`.
+  Без внешней сети страница рендерится без баннера.
+
 ## Ограничения
 
 - Отзывов, рейтингов и счётчиков загрузок на сайте нет: подтверждённых данных для них не было.

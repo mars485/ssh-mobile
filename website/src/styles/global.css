@@ -25,6 +25,8 @@
   :root {
     color-scheme: dark;
     --header-h: 56px;
+    /* высота внешнего баннера Keep Android Open, измеряется в Layout.astro */
+    --banner-h: 0px;
   }
 
   @media (min-width: 768px) {
@@ -35,7 +37,7 @@
 
   html {
     scroll-behavior: smooth;
-    scroll-padding-top: calc(var(--header-h) + 16px);
+    scroll-padding-top: calc(var(--header-h) + var(--banner-h) + 16px);
     -webkit-text-size-adjust: 100%;
   }
 
@@ -84,6 +86,24 @@
 }
 
 @layer components {
+  .banner-slot {
+    background: var(--color-bg);
+    width: 100%;
+  }
+
+  .banner-slot:empty {
+    display: none;
+  }
+
+  /* Баннер занимает место в потоке, поэтому здесь только высота липкой шапки. */
+  #main {
+    padding-top: var(--header-h);
+  }
+
+  #site-header {
+    top: var(--banner-h);
+  }
+
   .container-itg {
     width: 100%;
     max-width: 1180px;
@@ -92,7 +112,25 @@
   }
 
   @media (min-width: 768px) {
-    .container-itg {
+    .banner-slot {
+    background: var(--color-bg);
+    width: 100%;
+  }
+
+  .banner-slot:empty {
+    display: none;
+  }
+
+  /* Баннер занимает место в потоке, поэтому здесь только высота липкой шапки. */
+  #main {
+    padding-top: var(--header-h);
+  }
+
+  #site-header {
+    top: var(--banner-h);
+  }
+
+  .container-itg {
       padding-inline: 32px;
     }
   }
