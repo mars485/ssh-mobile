@@ -20,7 +20,9 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
     build: {
-      cssMinify: 'lightningcss',
+      // esbuild сохраняет оба свойства (backdrop-filter и -webkit-), lightningcss
+      // вырезал неprefixed-вариант и blur переставал работать.
+      cssMinify: 'esbuild',
     },
   },
   build: {

@@ -133,6 +133,8 @@ const softwareLd = {
         var slot = document.getElementById('my-banner');
         if (!slot) return;
         var root = document.documentElement;
+        var seenBanner = false;
+        var gaveUp = false;
         var apply = function () {
           // Баннер закрывается через display:none, поэтому мерим видимых детей, а не детей вообще.
           var visible = 0;
@@ -140,8 +142,12 @@ const softwareLd = {
             var el = slot.children[i];
             if (getComputedStyle(el).display !== 'none') visible = Math.max(visible, el.getBoundingClientRect().height);
           }
-          slot.classList.toggle('is-collapsed', visible === 0);
-          root.style.setProperty('--banner-h', (visible > 0 ? visible : 0) + 'px');
+          if (visible > 0) seenBanner = true;
+          // Пока внешний скрипт не ответил, держим резерв из CSS, иначе шапка прыгает вверх (CLS).
+          var collapsed = visible === 0 && (seenBanner || gaveUp);
+          slot.classList.toggle('is-collapsed', collapsed);
+          if (collapsed) root.style.setProperty('--banner-h', '0px');
+          else if (visible > 0) root.style.setProperty('--banner-h', visible + 'px');
         };
         apply();
         if (window.ResizeObserver) new ResizeObserver(apply).observe(slot);
@@ -149,7 +155,12 @@ const softwareLd = {
         window.addEventListener('load', apply);
         slot.addEventListener('click', function () { setTimeout(apply, 60); }, true);
         // если внешний скрипт не загрузился — не держим пустую полосу
-        setTimeout(apply, 3000);
+        setTimeout(function () {
+          if (!seenBanner) {
+            gaveUp = true;
+            apply();
+          }
+        }, 3000);
       })();
     </script>
 

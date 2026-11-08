@@ -25,13 +25,19 @@
   :root {
     color-scheme: dark;
     --header-h: 56px;
-    /* высота внешнего баннера Keep Android Open, измеряется в Layout.astro */
-    --banner-h: 0px;
+    /* высота внешнего баннера Keep Android Open; уточняется из Layout.astro */
+    --banner-h: 44px;
   }
 
   @media (min-width: 768px) {
     :root {
       --header-h: 64px;
+    }
+  }
+
+  @media (max-width: 767px) {
+    :root {
+      --banner-h: 60px;
     }
   }
 
@@ -86,27 +92,26 @@
 }
 
 @layer components {
-  /* Место под баннер резервируем до загрузки внешнего скрипта — иначе контент
-     сдвигается после вставки (CLS). Высота совпадает с size=mini (44 px / 60 px). */
+  /* Баннер закреплён над шапкой, поэтому место под него резервирует --banner-h
+     (а не поток документа). Высота совпадает с size=mini: 44 px / 60 px. */
   .banner-slot {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 45;
     background: var(--color-bg);
-    width: 100%;
-    min-height: 44px;
-  }
-
-  @media (max-width: 767px) {
-    .banner-slot {
-      min-height: 60px;
-    }
+    min-height: var(--banner-h);
   }
 
   .banner-slot.is-collapsed {
     min-height: 0;
+    display: none;
   }
 
-  /* Баннер занимает место в потоке, поэтому здесь только высота липкой шапки. */
+  /* Баннер и шапка выведены из потока — резервируем обе высоты. */
   #main {
-    padding-top: var(--header-h);
+    padding-top: calc(var(--header-h) + var(--banner-h));
   }
 
   #site-header {
@@ -121,27 +126,26 @@
   }
 
   @media (min-width: 768px) {
-    /* Место под баннер резервируем до загрузки внешнего скрипта — иначе контент
-     сдвигается после вставки (CLS). Высота совпадает с size=mini (44 px / 60 px). */
+    /* Баннер закреплён над шапкой, поэтому место под него резервирует --banner-h
+     (а не поток документа). Высота совпадает с size=mini: 44 px / 60 px. */
   .banner-slot {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 45;
     background: var(--color-bg);
-    width: 100%;
-    min-height: 44px;
-  }
-
-  @media (max-width: 767px) {
-    .banner-slot {
-      min-height: 60px;
-    }
+    min-height: var(--banner-h);
   }
 
   .banner-slot.is-collapsed {
     min-height: 0;
+    display: none;
   }
 
-  /* Баннер занимает место в потоке, поэтому здесь только высота липкой шапки. */
+  /* Баннер и шапка выведены из потока — резервируем обе высоты. */
   #main {
-    padding-top: var(--header-h);
+    padding-top: calc(var(--header-h) + var(--banner-h));
   }
 
   #site-header {
@@ -295,7 +299,7 @@
 }
 
 .header-shell[data-scrolled="true"] {
-  background: rgba(8, 9, 11, 0.94);
+  background: rgba(8, 9, 11, 0.97);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom-color: var(--color-line);
