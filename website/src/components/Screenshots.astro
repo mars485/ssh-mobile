@@ -50,7 +50,6 @@ const shots = t.screenshots.items.map((s) => ({ ...s, ...dims[s.id] }));
               data-title={s.title}
               data-caption={s.caption}
               data-alt={s.alt}
-              aria-label={`${s.title} — ${t.screenshots.hint}`}
             >
               <span class="relative block overflow-hidden rounded-[18px] border border-line bg-black p-1.5 transition-colors group-hover:border-accent/60">
                 <img
@@ -131,6 +130,7 @@ const shots = t.screenshots.items.map((s) => ({ ...s, ...dims[s.id] }));
           alt={t.screenshots.title}
           width="720"
           height="1608"
+          loading="lazy"
           class="mx-auto max-h-[72vh] w-auto rounded-2xl border border-line-strong bg-black object-contain shadow-2xl"
         />
 
