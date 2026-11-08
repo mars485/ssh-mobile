@@ -1,0 +1,24 @@
+{
+  "name": "ssh-mobile-website",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Presentation site for SSH Mobile (Android SSH client by IT GROUP)",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "astro": "5.18.2",
+    "sharp": "^0.34.4"
+  },
+  "devDependencies": {
+    "@astrojs/sitemap": "^3.7.4",
+    "@tailwindcss/vite": "^4.1.18",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3"
+  }
+}

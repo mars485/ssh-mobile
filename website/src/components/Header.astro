@@ -1,0 +1,146 @@
+---
+import Icon from './Icon.astro';
+import { site, type Dict, type Lang } from '../i18n/content';
+
+interface Props {
+  t: Dict;
+  lang: Lang;
+  altHref: string;
+  altLabel: string;
+  current?: string;
+}
+
+const { t, lang, altHref, altLabel } = Astro.props;
+
+const links = [
+  { href: '#features', label: t.nav.features },
+  { href: '#screenshots', label: t.nav.screenshots },
+  { href: '#security', label: t.nav.security },
+  { href: '#faq', label: t.nav.faq },
+];
+---
+
+<header id="site-header" class="header-shell fixed inset-x-0 top-0 z-40" data-scrolled="false">
+  <div class="container-itg flex h-14 items-center justify-between gap-3 md:h-16">
+    <a href={lang === 'en' ? '/en/' : '/'} class="group flex items-center gap-2.5" aria-label="SSH Mobile">
+      <span
+        class="grid h-8 w-8 place-items-center rounded-lg bg-accent font-mono text-[15px] font-bold leading-none text-black shadow-[0_6px_18px_-8px_rgba(255,59,47,.9)]"
+      >
+        &gt;_
+      </span>
+      <span class="flex flex-col leading-none">
+        <span class="text-[15px] font-semibold tracking-tight">SSH Mobile</span>
+        <span class="mt-1 font-mono text-[9px] uppercase tracking-[0.16em] text-dim">IT GROUP</span>
+      </span>
+    </a>
+
+    <nav class="hidden items-center gap-1 md:flex" aria-label="Main">
+      {
+        links.map((l) => (
+          <a
+            href={l.href}
+            class="rounded-md px-3 py-2 text-[13.5px] text-muted transition-colors hover:text-ink"
+          >
+            {l.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="flex items-center gap-2">
+      <a
+        href={site.repo}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="hidden h-10 w-10 place-items-center rounded-lg border border-line text-muted transition-colors hover:border-line-strong hover:text-ink sm:grid"
+        aria-label="GitHub"
+      >
+        <Icon name="github" size={18} />
+      </a>
+      <a
+        href={altHref}
+        class="hidden h-10 items-center rounded-lg border border-line px-2.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted transition-colors hover:border-line-strong hover:text-ink sm:flex"
+        hreflang={lang === 'ru' ? 'en' : 'ru'}
+        lang={lang === 'ru' ? 'en' : 'ru'}
+      >
+        {altLabel}
+      </a>
+      <a href={site.rustore} target="_blank" rel="noopener noreferrer" class="btn btn-primary hidden h-10 min-h-0 px-4 text-[13.5px] sm:inline-flex">
+        <Icon name="download" size={16} />
+        {t.nav.download}
+      </a>
+      <a
+        href={site.rustore}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="grid h-10 w-10 place-items-center rounded-lg bg-accent text-black sm:hidden"
+        aria-label={t.nav.download}
+      >
+        <Icon name="download" size={18} />
+      </a>
+      <button
+        type="button"
+        id="menu-open"
+        class="grid h-10 w-10 place-items-center rounded-lg border border-line text-ink transition-colors hover:border-line-strong md:hidden"
+        aria-label={t.nav.menu}
+        aria-controls="mobile-menu"
+        aria-expanded="false"
+      >
+        <Icon name="menu" size={20} />
+      </button>
+    </div>
+  </div>
+</header>
+
+<div id="mobile-menu" class="fixed inset-0 z-50 md:hidden" hidden>
+  <div class="absolute inset-0 bg-black/75 backdrop-blur-sm" data-menu-close></div>
+  <div
+    class="absolute inset-y-0 right-0 flex w-[88%] max-w-[360px] flex-col border-l border-line bg-bg-soft px-5 pb-8 pt-4"
+    role="dialog"
+    aria-modal="true"
+    aria-label={t.nav.menu}
+  >
+    <div class="flex items-center justify-between">
+      <span class="font-mono text-[10px] uppercase tracking-[0.2em] text-dim">SSH Mobile</span>
+      <button
+        type="button"
+        id="menu-close"
+        class="grid h-10 w-10 place-items-center rounded-lg border border-line text-ink"
+        aria-label={t.nav.close}
+      >
+        <Icon name="close" size={20} />
+      </button>
+    </div>
+
+    <nav class="mt-8 flex flex-col" aria-label="Mobile">
+      {
+        links.map((l, i) => (
+          <a
+            href={l.href}
+            class="flex items-center justify-between border-b border-line py-4 text-[17px] text-ink"
+            data-menu-link
+          >
+            <span>{l.label}</span>
+            <span class="font-mono text-[10px] text-dim">0{i + 1}</span>
+          </a>
+        ))
+      }
+      <a href={site.repo} target="_blank" rel="noopener noreferrer" class="flex items-center justify-between border-b border-line py-4 text-[17px] text-ink" data-menu-link>
+        <span>GitHub</span>
+        <Icon name="external" size={16} class="text-dim" />
+      </a>
+      <a href={altHref} class="flex items-center justify-between py-4 text-[17px] text-muted" hreflang={lang === 'ru' ? 'en' : 'ru'} data-menu-link>
+        <span>{lang === 'ru' ? 'English version' : 'Русская версия'}</span>
+        <Icon name="arrow-right" size={16} class="text-dim" />
+      </a>
+    </nav>
+
+    <a href={site.rustore} target="_blank" rel="noopener noreferrer" class="btn btn-primary mt-auto w-full">
+      <Icon name="download" size={18} />
+      {t.nav.download}
+    </a>
+    <p class="mt-3 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-dim">
+      Android {site.androidMin}+ · {site.license}
+    </p>
+  </div>
+</div>

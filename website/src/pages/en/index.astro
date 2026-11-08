@@ -1,0 +1,25 @@
+---
+import Layout from '../../components/Layout.astro';
+import Hero from '../../components/Hero.astro';
+import Features from '../../components/Features.astro';
+import Screenshots from '../../components/Screenshots.astro';
+import Advantages from '../../components/Advantages.astro';
+import Security from '../../components/Security.astro';
+import Start from '../../components/Start.astro';
+import Changelog from '../../components/Changelog.astro';
+import Faq from '../../components/Faq.astro';
+import { getContent } from '../../i18n/content';
+
+const t = getContent('en');
+---
+
+<Layout t={t} lang="en" path="/en/">
+  <Hero t={t} />
+  <Features t={t} />
+  <Screenshots t={t} lang="en" />
+  <Advantages t={t} />
+  <Security t={t} />
+  <Start t={t} />
+  <Changelog t={t} />
+  <Faq t={t} />
+</Layout>

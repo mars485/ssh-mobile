@@ -1,0 +1,41 @@
+# Production deployment for the SSH Mobile presentation site.
+# Runs behind the existing Traefik instance on the SWEB VPS (network itg-proxy).
+#
+#   docker compose up -d --build
+#
+# The domain must already resolve to the VPS before the first start,
+# otherwise the Let's Encrypt HTTP-01 challenge fails.
+
+name: itg-ssh-site
+
+services:
+  web:
+    build:
+      context: .
+    image: itg-ssh-site:latest
+    container_name: itg-ssh-site
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=itg-proxy
+      - traefik.http.routers.ssh-site.rule=Host(`ssh.itgsystem.ru`)
+      - traefik.http.routers.ssh-site.entrypoints=websecure
+      - traefik.http.routers.ssh-site.tls=true
+      - traefik.http.routers.ssh-site.tls.certresolver=letsencrypt
+      - traefik.http.routers.ssh-site.middlewares=itg-security@file
+      - traefik.http.services.ssh-site.loadbalancer.server.port=8080
+      - traefik.http.services.ssh-site.loadbalancer.healthcheck.path=/healthz
+      - traefik.http.services.ssh-site.loadbalancer.healthcheck.interval=30s
+
+networks:
+  proxy:
+    external: true
+    name: itg-proxy

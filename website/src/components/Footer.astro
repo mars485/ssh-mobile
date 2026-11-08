@@ -1,0 +1,132 @@
+---
+import Icon from './Icon.astro';
+import { site, type Dict } from '../i18n/content';
+
+interface Props {
+  t: Dict;
+  lang: 'ru' | 'en';
+  altHref: string;
+}
+
+const { t, lang, altHref } = Astro.props;
+
+const productLinks = [
+  { label: 'GitHub', href: site.repo },
+  { label: 'RuStore', href: site.rustore },
+  { label: 'Issues', href: site.issues },
+  { label: 'CHANGELOG', href: site.changelog },
+];
+
+const docLinks = [
+  { label: lang === 'ru' ? 'Политика конфиденциальности' : 'Privacy policy', href: site.privacy },
+  { label: lang === 'ru' ? 'Лицензии' : 'Licenses', href: site.licenses },
+  { label: lang === 'ru' ? 'Безопасность' : 'Security', href: site.security },
+  { label: lang === 'ru' ? 'Тестирование' : 'Testing', href: site.testing },
+];
+---
+
+<section class="relative overflow-hidden border-t border-line">
+  <div class="pointer-events-none absolute inset-0 -z-10 card-grid-bg opacity-40"></div>
+  <div class="pointer-events-none absolute -bottom-40 left-1/2 -z-10 h-[380px] w-[760px] -translate-x-1/2 glow-accent blur-3xl"></div>
+
+  <div class="container-itg py-14 sm:py-20">
+    <div class="flex flex-col items-start gap-8 lg:flex-row lg:items-center lg:justify-between">
+      <div class="max-w-[560px]">
+        <h2 class="text-[1.7rem] font-semibold leading-[1.1] tracking-[-0.02em] sm:text-[2.3rem]">
+          {t.cta.title}
+        </h2>
+        <p class="mt-3 text-[14.5px] leading-relaxed text-muted">{t.cta.text}</p>
+        <p class="mt-4 font-mono text-[10.5px] uppercase tracking-[0.16em] text-dim">{t.cta.note}</p>
+      </div>
+      <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+        <a href={site.rustore} target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+          <Icon name="download" size={18} />
+          {t.hero.primary}
+        </a>
+        <a href={site.repo} target="_blank" rel="noopener noreferrer" class="btn btn-ghost">
+          <Icon name="github" size={18} />
+          {t.hero.secondary}
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="border-t border-line bg-bg-soft/80">
+  <div class="container-itg py-10 sm:py-12">
+    <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr]">
+      <div>
+        <a href={lang === 'en' ? '/en/' : '/'} class="flex items-center gap-2.5" aria-label="SSH Mobile">
+          <span class="grid h-8 w-8 place-items-center rounded-lg bg-accent font-mono text-[15px] font-bold leading-none text-black">
+            &gt;_
+          </span>
+          <span class="text-[15px] font-semibold tracking-tight">SSH Mobile</span>
+        </a>
+        <p class="mt-3 max-w-[320px] text-[13px] leading-relaxed text-muted">{t.footer.tagline}</p>
+        <p class="mt-4 font-mono text-[10.5px] uppercase tracking-[0.14em] text-dim">
+          {t.hero.status}
+        </p>
+      </div>
+
+      <nav aria-labelledby="footer-product">
+        <h3 id="footer-product" class="font-mono text-[10.5px] uppercase tracking-[0.16em] text-dim">
+          {t.footer.product}
+        </h3>
+        <ul class="mt-3 space-y-2">
+          {
+            productLinks.map((l) => (
+              <li>
+                <a
+                  href={l.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex min-h-[40px] items-center text-[13.5px] text-muted transition-colors hover:text-ink md:min-h-0 md:py-0.5"
+                >
+                  {l.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <nav aria-labelledby="footer-docs">
+        <h3 id="footer-docs" class="font-mono text-[10.5px] uppercase tracking-[0.16em] text-dim">
+          {t.footer.docs}
+        </h3>
+        <ul class="mt-3 space-y-2">
+          {
+            docLinks.map((l) => (
+              <li>
+                <a
+                  href={l.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex min-h-[40px] items-center text-[13.5px] text-muted transition-colors hover:text-ink md:min-h-0 md:py-0.5"
+                >
+                  {l.label}
+                </a>
+              </li>
+            ))
+          }
+          <li>
+            <a href={site.itg} target="_blank" rel="noopener noreferrer" class="flex min-h-[40px] items-center text-[13.5px] text-muted transition-colors hover:text-ink md:min-h-0 md:py-0.5">
+              itgsystem.ru
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+
+    <div class="mt-10 flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-[11.5px] leading-relaxed text-dim">{t.footer.rights}</p>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[10.5px] uppercase tracking-[0.12em] text-dim">
+        <a href="mailto:info@itgsystem.ru" class="transition-colors hover:text-ink">info@itgsystem.ru</a>
+        <a href={altHref} hreflang={lang === 'ru' ? 'en' : 'ru'} class="transition-colors hover:text-ink">
+          {lang === 'ru' ? 'EN' : 'RU'}
+        </a>
+        <span>{t.footer.updated} 08.11.2026</span>
+      </div>
+    </div>
+  </div>
+</footer>

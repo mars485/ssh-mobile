@@ -1,0 +1,69 @@
+---
+import Icon from './Icon.astro';
+import { site, type Dict } from '../i18n/content';
+
+interface Props {
+  t: Dict;
+}
+
+const { t } = Astro.props;
+---
+
+<section id="changelog" class="section-pad scroll-mt-24 border-t border-line bg-bg-soft/60" aria-labelledby="changelog-title">
+  <div class="container-itg">
+    <div class="flex flex-wrap items-end justify-between gap-5">
+      <div class="max-w-[560px]">
+        <p class="kicker">{t.changelog.kicker}</p>
+        <h2 id="changelog-title" class="mt-4 text-[1.75rem] font-semibold leading-[1.12] tracking-[-0.02em] sm:text-[2.2rem] lg:text-[2.5rem]">
+          {t.changelog.title}
+        </h2>
+        <p class="mt-4 text-[15px] leading-relaxed text-muted">{t.changelog.lead}</p>
+      </div>
+      <a
+        href={site.changelog}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-2 text-[13px] font-medium text-ink underline decoration-line-strong underline-offset-4 transition-colors hover:decoration-accent"
+      >
+        {t.changelog.link}
+        <Icon name="external" size={14} class="text-dim" />
+      </a>
+    </div>
+
+    <ol class="mt-9 border-l border-line">
+      {
+        t.changelog.items.map((r) => (
+          <li class:list={['relative pb-8 pl-6 last:pb-0', { 'pl-7': r.highlight }]}>
+            <span
+              class:list={[
+                'absolute -left-[5px] top-[7px] h-2.5 w-2.5 rounded-full border',
+                r.highlight
+                  ? 'border-accent bg-accent shadow-[0_0_0_4px_rgba(255,59,47,.14)]'
+                  : 'border-line-strong bg-bg',
+              ]}
+            />
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <h3 class:list={['font-mono text-[15px] font-semibold tracking-tight', r.highlight ? 'text-accent' : 'text-ink']}>
+                {r.version}
+              </h3>
+              <span class="font-mono text-[11px] text-dim">{r.date}</span>
+              {r.badge && (
+                <span class:list={['changelog-badge', r.highlight && 'border-term/40 text-term/90']}>
+                  {r.badge}
+                </span>
+              )}
+            </div>
+            <ul class="mt-3 space-y-1.5">
+              {r.items.map((i) => (
+                <li class="flex items-start gap-2 text-[13.5px] leading-relaxed text-muted">
+                  <span class="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-line-strong" />
+                  <span>{i}</span>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>

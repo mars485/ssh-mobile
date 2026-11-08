@@ -1,0 +1,212 @@
+---
+import Icon from './Icon.astro';
+import { site, type Dict, type ShotId } from '../i18n/content';
+
+interface Props {
+  t: Dict;
+  lang: string;
+}
+
+const { t, lang } = Astro.props;
+
+const dims: Record<ShotId, { w: number; h: number }> = {
+  dashboard: { w: 720, h: 1608 },
+  terminal: { w: 720, h: 1600 },
+  'new-server': { w: 720, h: 1600 },
+  sessions: { w: 720, h: 1600 },
+  htop: { w: 720, h: 1600 },
+  vim: { w: 720, h: 1600 },
+  reconnect: { w: 720, h: 1600 },
+};
+
+const shots = t.screenshots.items.map((s) => ({ ...s, ...dims[s.id] }));
+---
+
+<section id="screenshots" class="section-pad scroll-mt-24 border-t border-line bg-bg-soft/60" aria-labelledby="screenshots-title">
+  <div class="container-itg">
+    <div class="flex flex-wrap items-end justify-between gap-6">
+      <div class="max-w-[640px]">
+        <p class="kicker">{t.screenshots.kicker}</p>
+        <h2 id="screenshots-title" class="mt-4 text-[1.75rem] font-semibold leading-[1.12] tracking-[-0.02em] sm:text-[2.2rem] lg:text-[2.6rem]">
+          {t.screenshots.title}
+        </h2>
+        <p class="mt-4 text-[15px] leading-relaxed text-muted sm:text-[16px]">{t.screenshots.lead}</p>
+      </div>
+      <p class="hidden items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-dim sm:flex">
+        <Icon name="plus" size={13} class="text-accent" />
+        {t.screenshots.hint}
+      </p>
+    </div>
+
+    <ul class="mt-9 grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-5 sm:gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+      {
+        shots.map((s, i) => (
+          <li>
+            <button
+              type="button"
+              class="group block w-full text-left"
+              data-shot-index={i}
+              data-full={`/shots/${s.id}-1080.webp`}
+              data-title={s.title}
+              data-caption={s.caption}
+              data-alt={s.alt}
+              aria-label={`${s.title} — ${t.screenshots.hint}`}
+            >
+              <span class="relative block overflow-hidden rounded-[18px] border border-line bg-black p-1.5 transition-colors group-hover:border-accent/60">
+                <img
+                  src={`/shots/${s.id}-480.webp`}
+                  srcset={`/shots/${s.id}-480.webp 480w, /shots/${s.id}-720.webp 720w, /shots/${s.id}-1080.webp 1080w`}
+                  sizes="(min-width: 1024px) 260px, (min-width: 768px) 30vw, 44vw"
+                  width={s.w}
+                  height={s.h}
+                  alt={s.alt}
+                  loading="lazy"
+                  decoding="async"
+                  class="w-full rounded-[13px] transition-transform duration-500 group-hover:scale-[1.015]"
+                />
+                <span class="pointer-events-none absolute inset-1.5 rounded-[13px] ring-1 ring-inset ring-white/[0.04]"></span>
+              </span>
+              <span class="mt-3 flex items-baseline justify-between gap-2">
+                <span class="text-[13.5px] font-medium text-ink">{s.title}</span>
+                <span class="font-mono text-[10px] text-dim">{String(i + 1).padStart(2, '0')}</span>
+              </span>
+              <span class="mt-1 block text-[12.5px] leading-snug text-muted line-clamp-2">{s.caption}</span>
+            </button>
+          </li>
+        ))
+      }
+    </ul>
+
+    <a
+      href={`${site.repo}/tree/main/docs/screenshots`}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="mt-6 flex items-center justify-between gap-3 rounded-xl border border-dashed border-line-strong px-4 py-3 text-[13px] text-muted transition-colors hover:border-accent/60 hover:text-ink"
+    >
+      <span class="font-mono text-[11px] uppercase tracking-[0.12em]">{t.screenshots.allLink}</span>
+      <Icon name="external" size={15} class="text-dim" />
+    </a>
+  </div>
+
+  <div
+    id="lightbox"
+    class="lightbox fixed inset-0 z-[70] flex flex-col items-center justify-center px-4 py-6"
+    role="dialog"
+    aria-modal="true"
+    aria-label={t.screenshots.title}
+    hidden
+  >
+    <div class="absolute inset-0 bg-black/92" data-lb-backdrop></div>
+
+    <div class="relative flex w-full max-w-[980px] flex-col items-center gap-4">
+      <div class="flex w-full items-center justify-between gap-3">
+        <p class="font-mono text-[11px] uppercase tracking-[0.16em] text-muted">
+          <span id="lb-counter" class="text-ink">1</span>
+          <span class="text-dim"> {t.screenshots.lightbox.counter} </span>
+          <span class="text-dim">{shots.length}</span>
+        </p>
+        <button
+          type="button"
+          id="lb-close"
+          class="grid h-11 w-11 place-items-center rounded-lg border border-line-strong bg-black/60 text-ink transition-colors hover:border-accent"
+          aria-label={t.screenshots.lightbox.close}
+        >
+          <Icon name="close" size={20} />
+        </button>
+      </div>
+
+      <div class="flex w-full items-center gap-2 sm:gap-4">
+        <button
+          type="button"
+          id="lb-prev"
+          class="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line-strong bg-black/60 text-ink transition-colors hover:border-accent sm:h-12 sm:w-12"
+          aria-label={t.screenshots.lightbox.prev}
+        >
+          <Icon name="chevron-left" size={20} />
+        </button>
+
+        <img
+          id="lb-image"
+          src="/shots/dashboard-1080.webp"
+          alt={t.screenshots.title}
+          width="720"
+          height="1608"
+          class="mx-auto max-h-[72vh] w-auto rounded-2xl border border-line-strong bg-black object-contain shadow-2xl"
+        />
+
+        <button
+          type="button"
+          id="lb-next"
+          class="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-line-strong bg-black/60 text-ink transition-colors hover:border-accent sm:h-12 sm:w-12"
+          aria-label={t.screenshots.lightbox.next}
+        >
+          <Icon name="chevron-right" size={20} />
+        </button>
+      </div>
+
+      <p class="max-w-[560px] text-center text-[13px] text-muted">
+        <span id="lb-title" class="font-medium text-ink"></span>
+        <span class="mx-1 text-dim">—</span>
+        <span id="lb-caption"></span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<script>
+  const box = document.getElementById('lightbox') as HTMLElement | null;
+  const triggers = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-shot-index]'));
+  const img = document.getElementById('lb-image') as HTMLImageElement | null;
+  const titleEl = document.getElementById('lb-title');
+  const captionEl = document.getElementById('lb-caption');
+  const counterEl = document.getElementById('lb-counter');
+  const prevBtn = document.getElementById('lb-prev');
+  const nextBtn = document.getElementById('lb-next');
+  const closeBtn = document.getElementById('lb-close');
+
+  let current = 0;
+  let lastFocus: HTMLElement | null = null;
+
+  function render(index: number) {
+    if (!triggers.length || !img) return;
+    current = (index + triggers.length) % triggers.length;
+    const t = triggers[current];
+    img.src = t.dataset.full || '';
+    img.alt = t.dataset.alt || '';
+    if (titleEl) titleEl.textContent = t.dataset.title || '';
+    if (captionEl) captionEl.textContent = t.dataset.caption || '';
+    if (counterEl) counterEl.textContent = String(current + 1);
+  }
+
+  function open(index: number) {
+    if (!box) return;
+    lastFocus = document.activeElement as HTMLElement;
+    render(index);
+    box.hidden = false;
+    document.body.classList.add('is-locked');
+    img?.focus?.();
+    closeBtn?.focus();
+  }
+
+  function close() {
+    if (!box) return;
+    box.hidden = true;
+    document.body.classList.remove('is-locked');
+    lastFocus?.focus();
+  }
+
+  triggers.forEach((btn, i) => btn.addEventListener('click', () => open(i)));
+  prevBtn?.addEventListener('click', () => render(current - 1));
+  nextBtn?.addEventListener('click', () => render(current + 1));
+  closeBtn?.addEventListener('click', close);
+  box?.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).hasAttribute('data-lb-backdrop')) close();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!box || box.hidden) return;
+    if (e.key === 'Escape') close();
+    if (e.key === 'ArrowLeft') render(current - 1);
+    if (e.key === 'ArrowRight') render(current + 1);
+  });
+</script>

@@ -1,0 +1,48 @@
+---
+import Icon from './Icon.astro';
+import type { Dict } from '../i18n/content';
+
+interface Props {
+  t: Dict;
+}
+
+const { t } = Astro.props;
+---
+
+<section id="features" class="section-pad scroll-mt-24" aria-labelledby="features-title">
+  <div class="container-itg">
+    <div class="max-w-[720px]">
+      <p class="kicker">{t.features.kicker}</p>
+      <h2 id="features-title" class="mt-4 text-[1.75rem] font-semibold leading-[1.12] tracking-[-0.02em] sm:text-[2.2rem] lg:text-[2.6rem]">
+        {t.features.title}
+      </h2>
+      <p class="mt-4 text-[15px] leading-relaxed text-muted sm:text-[16px]">{t.features.lead}</p>
+    </div>
+
+    <ul class="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
+      {
+        t.features.items.map((f) => (
+          <li class="group relative flex flex-col bg-bg-soft p-5 transition-colors hover:bg-panel">
+            <span class="absolute inset-x-0 top-0 h-px scale-x-0 bg-accent transition-transform duration-300 group-hover:scale-x-100" />
+            <div class="flex items-start justify-between">
+              <span class="grid h-10 w-10 place-items-center rounded-lg border border-line bg-black/40 text-accent">
+                <Icon name={f.icon} size={19} />
+              </span>
+              <span class="font-mono text-[10px] tracking-[0.14em] text-dim">{f.index}</span>
+            </div>
+            <h3 class="mt-4 text-[15.5px] font-semibold tracking-[-0.01em]">{f.title}</h3>
+            <p class="mt-2 text-[13.5px] leading-relaxed text-muted">{f.text}</p>
+            <span class="mt-auto pt-4 inline-block font-mono text-[10px] uppercase tracking-[0.14em] text-dim">
+              {f.tag}
+            </span>
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="mt-5 flex items-start gap-2 font-mono text-[11px] leading-relaxed text-dim">
+      <Icon name="check" size={13} class="mt-[2px] shrink-0 text-term/70" />
+      <span>{t.features.note}</span>
+    </p>
+  </div>
+</section>

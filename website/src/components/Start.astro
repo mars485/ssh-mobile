@@ -1,0 +1,52 @@
+---
+import Icon from './Icon.astro';
+import { site, type Dict } from '../i18n/content';
+
+interface Props {
+  t: Dict;
+}
+
+const { t } = Astro.props;
+---
+
+<section id="start" class="section-pad scroll-mt-24" aria-labelledby="start-title">
+  <div class="container-itg">
+    <div class="max-w-[640px]">
+      <p class="kicker">{t.start.kicker}</p>
+      <h2 id="start-title" class="mt-4 text-[1.75rem] font-semibold leading-[1.12] tracking-[-0.02em] sm:text-[2.2rem] lg:text-[2.5rem]">
+        {t.start.title}
+      </h2>
+      <p class="mt-4 text-[15px] leading-relaxed text-muted sm:text-[16px]">{t.start.lead}</p>
+    </div>
+
+    <ol class="mt-10 grid gap-4 md:grid-cols-3">
+      {
+        t.start.steps.map((s) => (
+          <li class="flex flex-col rounded-xl border border-line bg-bg-soft p-5">
+            <div class="flex items-center gap-3">
+              <span class="grid h-9 w-9 place-items-center rounded-lg border border-accent/40 bg-accent/10 font-mono text-[12px] text-accent">
+                {s.step}
+              </span>
+              <span class="h-px flex-1 bg-line"></span>
+            </div>
+            <h3 class="mt-4 text-[16px] font-semibold tracking-[-0.01em]">{s.title}</h3>
+            <p class="mt-2 text-[13.5px] leading-relaxed text-muted">{s.text}</p>
+            {s.code && (
+              <code class="mt-4 block overflow-x-auto rounded-lg border border-line bg-black/60 px-3 py-2 font-mono text-[10.5px] text-term/80">
+                {s.code}
+              </code>
+            )}
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="mt-6 flex flex-col gap-4 rounded-xl border border-line bg-panel/50 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <p class="max-w-[600px] text-[12.5px] leading-relaxed text-muted">{t.start.note}</p>
+      <a href={site.rustore} target="_blank" rel="noopener noreferrer" class="btn btn-primary w-full shrink-0 sm:w-auto">
+        <Icon name="download" size={17} />
+        {t.start.cta}
+      </a>
+    </div>
+  </div>
+</section>
