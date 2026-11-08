@@ -185,6 +185,28 @@ function Invoke-RuStore {
     return $json
 }
 
+function Get-RuStoreVersionId {
+    param($Response)
+    if ($null -eq $Response) { throw 'RuStore не вернул ответ при создании черновика.' }
+    $candidates = @()
+    if ($Response.PSObject.Properties['body']) { $candidates += $Response.body }
+    if ($Response.PSObject.Properties['content']) { $candidates += $Response.content }
+    foreach ($c in $candidates) {
+        if ($null -eq $c) { continue }
+        if ($c -is [int] -or $c -is [long] -or $c -is [double]) { return [int]$c }
+        if ($c -is [string]) {
+            $parsed = 0
+            if ([int]::TryParse($c, [ref]$parsed)) { return $parsed }
+            continue
+        }
+        if ($c.PSObject.Properties['versionId']) { return [int]$c.versionId }
+        if ($c.PSObject.Properties['content'] -and $c.content.PSObject.Properties['versionId']) {
+            return [int]$c.content.versionId
+        }
+    }
+    throw "Не удалось определить versionId из ответа API: $($Response | ConvertTo-Json -Depth 6 -Compress)"
+}
+
 # --- черновик ----------------------------------------------------------------
 
 if ($VersionId -eq 0) {
@@ -209,7 +231,7 @@ if ($VersionId -eq 0) {
 
     $r = Invoke-RuStore -Method POST -Path "/v1/application/$packageName/version" -BodyFile $bodyFile
     if ($r) {
-        $VersionId = [int]$r.content.versionId
+        $VersionId = Get-RuStoreVersionId -Response $r
         Write-Ok "versionId = $VersionId"
     }
 } else {
