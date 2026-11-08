@@ -99,6 +99,7 @@ import dev.sshmobile.R
 import dev.sshmobile.core.session.SessionError
 import dev.sshmobile.core.session.SessionStatus
 import dev.sshmobile.core.terminal.ArrowKey
+import dev.sshmobile.core.terminal.TerminalCommandTracker
 import dev.sshmobile.core.terminal.TerminalInput
 import dev.sshmobile.data.repository.AppSettings
 import dev.sshmobile.ui.LocalAppContainer
@@ -125,13 +126,20 @@ fun TerminalScreen(
     val viewModel: TerminalViewModel = viewModel(
         key = "terminal-$sessionId",
         factory = SimpleViewModelFactory {
-            TerminalViewModel(container.sessionManager, sessionId)
+            TerminalViewModel(
+                container.sessionManager,
+                sessionId,
+                container.terminalCommandRepository,
+            )
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
+    val commandLibrary by viewModel.commandLibrary.collectAsStateWithLifecycle()
+    val portForwards by viewModel.portForwards.collectAsStateWithLifecycle()
     val settingsFlow = remember(container) { container.settingsRepository.settings }
     val settings by settingsFlow.collectAsStateWithLifecycle(initialValue = AppSettings())
+    val terminalPalette = terminalPalette(settings.terminalColorScheme)
 
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
@@ -146,9 +154,12 @@ fun TerminalScreen(
     var showBuffer by remember { mutableStateOf(false) }
     var confirmClose by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
+    var showCommandLibrary by remember { mutableStateOf(false) }
+    var showPortForwardDialog by remember { mutableStateOf(false) }
     var selection by remember { mutableStateOf<LineSelection?>(null) }
     var imeBuffer by remember { mutableStateOf("") }
 
+    val commandTracker = remember { TerminalCommandTracker() }
     val focusRequester = remember { FocusRequester() }
     val rootFocusRequester = remember { FocusRequester() }
     val currentSnapshot by rememberUpdatedState(snapshot)
@@ -170,13 +181,30 @@ fun TerminalScreen(
     fun sendTypedText(text: String) {
         if (text.isEmpty()) return
         if (ctrl || alt) {
+            commandTracker.invalidate()
             viewModel.sendText(text.take(1), ctrl, alt)
             if (text.length > 1) viewModel.sendText(text.substring(1))
             ctrl = false
             alt = false
         } else {
+            commandTracker.type(
+                text,
+                enabled = commandLibrary.historyEnabled && !snapshot.altScreen,
+            )
+                .forEach(viewModel::recordCommand)
             viewModel.sendText(text)
         }
+    }
+
+    fun runLibraryCommand(command: String) {
+        commandTracker.reset()
+        viewModel.runCommand(command)
+        showCommandLibrary = false
+    }
+
+    fun sendExtraKey(bytes: ByteArray) {
+        commandTracker.invalidate()
+        viewModel.sendKey(bytes)
     }
 
     fun copySelection() {
@@ -202,6 +230,11 @@ fun TerminalScreen(
             scope.launch { snackbarHost.showSnackbar(context.getString(R.string.terminal_clipboard_empty)) }
             return
         }
+        commandTracker.paste(
+            text,
+            enabled = commandLibrary.historyEnabled && !snapshot.altScreen,
+        )
+            .forEach(viewModel::recordCommand)
         viewModel.paste(text, snapshot.bracketedPaste)
         scope.launch {
             snackbarHost.showSnackbar(context.getString(R.string.terminal_pasted_chars, text.length))
@@ -215,6 +248,7 @@ fun TerminalScreen(
 
     fun handleHardwareKey(event: KeyEvent): Boolean {
         if (event.type != KeyEventType.KeyDown) return false
+        if (!commandLibrary.historyEnabled || snapshot.altScreen) commandTracker.invalidate()
         val withCtrl = event.isCtrlPressed
         val withAlt = event.isAltPressed
         val appCursor = currentSnapshot.applicationCursorKeys
@@ -248,6 +282,11 @@ fun TerminalScreen(
             else -> null
         }
         if (sequence != null) {
+            when (event.key) {
+                Key.Enter -> commandTracker.enter()?.let(viewModel::recordCommand)
+                Key.Backspace -> commandTracker.backspace()
+                else -> commandTracker.invalidate()
+            }
             viewModel.sendKey(sequence)
             return true
         }
@@ -255,6 +294,14 @@ fun TerminalScreen(
         if (codePoint > 0 && codePoint != 0x7F) {
             val char = codePoint.toChar()
             if (!char.isISOControl()) {
+                if (withCtrl || withAlt || snapshot.altScreen) {
+                    commandTracker.invalidate()
+                } else {
+                    commandTracker.type(
+                        char.toString(),
+                        enabled = commandLibrary.historyEnabled && !snapshot.altScreen,
+                    ).forEach(viewModel::recordCommand)
+                }
                 viewModel.sendText(char.toString(), withCtrl, withAlt)
                 return true
             }
@@ -332,6 +379,27 @@ fun TerminalScreen(
                             },
                         )
                         DropdownMenuItem(
+                            text = { Text(stringResource(R.string.terminal_commands)) },
+                            onClick = {
+                                menuOpen = false
+                                showCommandLibrary = true
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.terminal_forward_title)) },
+                            onClick = {
+                                menuOpen = false
+                                showPortForwardDialog = true
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.terminal_forward_title)) },
+                            onClick = {
+                                menuOpen = false
+                                showPortForwardDialog = true
+                            },
+                        )
+                        DropdownMenuItem(
                             text = {
                                 Text(
                                     stringResource(
@@ -367,7 +435,7 @@ fun TerminalScreen(
             )
         },
         snackbarHost = { SnackbarHost(snackbarHost) },
-        containerColor = TerminalBackgroundColor,
+        containerColor = terminalPalette.background,
     ) { padding ->
         Box(
             modifier = Modifier
@@ -411,6 +479,8 @@ fun TerminalScreen(
                     TerminalCanvas(
                         snapshot = snapshot,
                         fontSizeSp = settings.fontSizeSp,
+                        terminalFont = settings.terminalFont,
+                        palette = terminalPalette,
                         selection = selection,
                         onResize = viewModel::resize,
                         onScroll = viewModel::scroll,
@@ -530,7 +600,7 @@ fun TerminalScreen(
                         hasSelection = selection != null,
                         onToggleCtrl = { ctrl = !ctrl },
                         onToggleAlt = { alt = !alt },
-                        onSend = viewModel::sendKey,
+                        onSend = ::sendExtraKey,
                         onCopySelection = ::copySelection,
                         onClearSelection = { selection = null },
                         onPaste = ::pasteFromClipboard,
@@ -551,12 +621,14 @@ fun TerminalScreen(
                             sendTypedText(newValue.substring(imeBuffer.length))
                         }
                         imeBuffer.startsWith(newValue) -> {
+                            commandTracker.invalidate()
                             repeat(imeBuffer.length - newValue.length) {
                                 viewModel.sendKey(TerminalInput.backspace())
                             }
                         }
                         else -> {
                             // The IME replaced the composing region; treat the new text as input.
+                            commandTracker.invalidate()
                             sendTypedText(newValue)
                         }
                     }
@@ -684,6 +756,30 @@ fun TerminalScreen(
             onDismiss = { showBuffer = false },
         )
     }
+
+    if (showCommandLibrary) {
+        TerminalCommandLibraryDialog(
+            library = commandLibrary,
+            onDismiss = { showCommandLibrary = false },
+                        onRunCommand = ::runLibraryCommand,
+                        onSaveSnippet = viewModel::saveSnippet,
+                        onDeleteSnippet = viewModel::deleteSnippet,
+                        onClearHistory = viewModel::clearCommandHistory,
+                        onHistoryEnabledChange = viewModel::setHistoryEnabled,
+        )
+    }
+
+    if (showPortForwardDialog) {
+        PortForwardDialog(
+            activeForwards = portForwards,
+            onDismiss = { showPortForwardDialog = false },
+            onStart = { spec ->
+                viewModel.startPortForward(spec)
+                Unit
+            },
+            onStop = viewModel::stopPortForward,
+        )
+    }
 }
 
 @Composable
@@ -737,8 +833,6 @@ private fun BufferDialog(
         }
     }
 }
-
-private val TerminalBackgroundColor = Color(0xFF070A08)
 
 @Composable
 private fun sessionErrorText(error: SessionError): String = stringResource(

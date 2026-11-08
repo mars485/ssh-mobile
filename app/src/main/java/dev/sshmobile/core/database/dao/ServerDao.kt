@@ -31,6 +31,12 @@ interface ServerDao {
     @Query("DELETE FROM servers WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("UPDATE servers SET jumpServerId = NULL WHERE jumpServerId = :id")
+    suspend fun clearJumpHostReferences(id: Long)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM servers WHERE jumpServerId = :id)")
+    suspend fun isUsedAsJumpHost(id: Long): Boolean
+
     @Query("UPDATE servers SET favorite = :favorite, updatedAt = :now WHERE id = :id")
     suspend fun setFavorite(id: Long, favorite: Boolean, now: Long)
 

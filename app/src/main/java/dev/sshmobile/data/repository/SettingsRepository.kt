@@ -16,12 +16,18 @@ enum class ThemeMode { DARK, LIGHT }
 
 enum class AppLanguage { SYSTEM, ENGLISH, RUSSIAN }
 
+enum class TerminalFont { SYSTEM_MONO, SANS_MONO }
+
+enum class TerminalColorScheme { GREEN, AMBER, SOLARIZED_DARK, DRACULA }
+
 data class AppSettings(
     val fontSizeSp: Float = 14f,
     val keepScreenOn: Boolean = true,
     val blockScreenshots: Boolean = false,
     val autoReconnect: Boolean = true,
     val scrollbackLines: Int = 5000,
+    val terminalFont: TerminalFont = TerminalFont.SYSTEM_MONO,
+    val terminalColorScheme: TerminalColorScheme = TerminalColorScheme.GREEN,
     val themeMode: ThemeMode = ThemeMode.DARK,
     val language: AppLanguage = AppLanguage.SYSTEM,
 )
@@ -36,6 +42,8 @@ class SettingsRepository(private val context: Context) {
         val blockScreenshots = booleanPreferencesKey("block_screenshots")
         val autoReconnect = booleanPreferencesKey("auto_reconnect")
         val scrollback = intPreferencesKey("scrollback_lines")
+        val terminalFont = stringPreferencesKey("terminal_font")
+        val terminalColorScheme = stringPreferencesKey("terminal_color_scheme")
         val theme = stringPreferencesKey("theme_mode")
         val language = stringPreferencesKey("app_language")
     }
@@ -47,6 +55,11 @@ class SettingsRepository(private val context: Context) {
             blockScreenshots = prefs[Keys.blockScreenshots] ?: false,
             autoReconnect = prefs[Keys.autoReconnect] ?: true,
             scrollbackLines = prefs[Keys.scrollback] ?: 5000,
+            terminalFont = runCatching { TerminalFont.valueOf(prefs[Keys.terminalFont] ?: "SYSTEM_MONO") }
+                .getOrDefault(TerminalFont.SYSTEM_MONO),
+            terminalColorScheme = runCatching {
+                TerminalColorScheme.valueOf(prefs[Keys.terminalColorScheme] ?: "GREEN")
+            }.getOrDefault(TerminalColorScheme.GREEN),
             themeMode = runCatching { ThemeMode.valueOf(prefs[Keys.theme] ?: "DARK") }
                 .getOrDefault(ThemeMode.DARK),
             language = runCatching { AppLanguage.valueOf(prefs[Keys.language] ?: "SYSTEM") }
@@ -74,6 +87,14 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setScrollbackLines(value: Int) {
         context.settingsDataStore.edit { it[Keys.scrollback] = value.coerceIn(500, 50000) }
+    }
+
+    suspend fun setTerminalFont(value: TerminalFont) {
+        context.settingsDataStore.edit { it[Keys.terminalFont] = value.name }
+    }
+
+    suspend fun setTerminalColorScheme(value: TerminalColorScheme) {
+        context.settingsDataStore.edit { it[Keys.terminalColorScheme] = value.name }
     }
 
     suspend fun setThemeMode(value: ThemeMode) {

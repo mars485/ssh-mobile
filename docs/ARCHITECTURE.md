@@ -23,23 +23,30 @@ MVP должен давать полноценную интерактивную 
 ```
 core/ssh
   SshEngine, SshConnection, SshShell   — контракт транспорта
-  SshjEngine                          — реализация на SSHJ (только IO)
+  SshSftp, SftpEntry                  — контракт SFTP
+  SshjEngine                          — реализация на SSHJ (только IO), jump host, forwarding, SFTP
   KnownHostsHostKeyVerifier, HostKeys — политика доверия и fingerprint
   PrivateKeyInspector                 — валидация импортируемого ключа
 core/terminal
   TerminalEmulator                    — VT100/xterm state machine, grid, scrollback
   TerminalInput                       — отображение ввода в байты PTY
+  TerminalCommandTracker              — распознавание введённых команд для истории
 core/security
   SecretCipher                        — контракт шифрования
   AndroidKeystoreSecretCipher         — AES-256-GCM + AndroidKeyStore
 core/database
-  AppDatabase, ServerDao, KnownHostDao, entities
+  AppDatabase, ServerDao, KnownHostDao, entities, MIGRATION_1_2
 core/session
   SshSessionManager, TerminalSession  — lifecycle, reconnect, host-key prompt, ввод/вывод
+  SftpSessionManager, SftpState       — SFTP lifecycle, навигация, операции, передачи
+core/backup
+  ConfigBackupCodec                   — JSON без секретов
 data/repository
   ServerRepository / LocalServerRepository
   KnownHostRepository / RoomKnownHostRepository
   SettingsRepository (DataStore)
+  TerminalCommandRepository           — сниппеты и история (шифрование)
+  ConfigBackupRepository              — экспорт/импорт с разрешением jump host по имени
 domain/model
   Server, ServerCredentials, ServerDraft, HostKeyInfo, KnownHostKey, HostKeyChallenge
 ui/*
@@ -193,16 +200,19 @@ scrollback, тема.
 
 ## 10. Точки расширения
 
-- `SshEngine`/`SshConnection`/`SshShell` — замена SSHJ, добавление jump host/port forwarding.
+- `SshEngine`/`SshConnection`/`SshShell`/`SshSftp` — замена SSHJ, вложенные jump host,
+  постоянные правила forwarding, редактирование файлов на месте.
 - `TerminalEmulator` — mouse reporting, hyperlinks, sixel, reflow, кастомизация палитры.
 - `SecretCipher` — переход на hardware-backed ключи с biometric gate.
-- `ServerRepository` — импорт/экспорт конфигураций (v0.2), синхронизация без секретов.
-- `Routes` — SFTP/администрирование (v0.3/v0.4).
+- `ConfigBackupRepository` — синхронизация конфигурации без секретов.
+- `Routes` — администрирование (v0.4).
 
 ## 11. Тестируемость
 
 - `core/terminal` и `core/ssh` не зависят от Android → быстрые JVM-тесты.
 - `SshjEngine` покрыт интеграционным тестом с in-process Apache MINA SSHD: реальный KEX,
-  пароль/RSA-ключ, PTY, resize, отказ host key.
+  пароль/RSA-ключ, PTY, resize, jump host, port forwarding, отказ host key.
+- SFTP проверяется отдельным интеграционным тестом с `sshd-sftp` и виртуальной ФС:
+  список, создание/переименование/удаление, права, upload/download с прогрессом.
 - Room-репозитории проверяются Robolectric с in-memory БД и fake-cipher.
 - Android Keystore проверяется только на устройстве/эмуляторе (провайдер недоступен в JVM).

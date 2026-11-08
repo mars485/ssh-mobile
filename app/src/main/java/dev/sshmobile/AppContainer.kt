@@ -5,14 +5,17 @@ import androidx.room.Room
 import dev.sshmobile.core.database.AppDatabase
 import dev.sshmobile.core.security.AndroidKeystoreSecretCipher
 import dev.sshmobile.core.security.SecretCipher
+import dev.sshmobile.core.session.SftpSessionManager
 import dev.sshmobile.core.session.SshSessionManager
 import dev.sshmobile.core.ssh.SshEngine
 import dev.sshmobile.core.ssh.SshjEngine
+import dev.sshmobile.data.repository.ConfigBackupRepository
 import dev.sshmobile.data.repository.KnownHostRepository
 import dev.sshmobile.data.repository.LocalServerRepository
 import dev.sshmobile.data.repository.RoomKnownHostRepository
 import dev.sshmobile.data.repository.ServerRepository
 import dev.sshmobile.data.repository.SettingsRepository
+import dev.sshmobile.data.repository.TerminalCommandRepository
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -29,7 +32,7 @@ class AppContainer(
         applicationContext,
         AppDatabase::class.java,
         AppDatabase.NAME,
-    ).build()
+    ).addMigrations(AppDatabase.MIGRATION_1_2).build()
 
     val secretCipher: SecretCipher = AndroidKeystoreSecretCipher()
 
@@ -40,7 +43,11 @@ class AppContainer(
 
     val knownHostRepository: KnownHostRepository = RoomKnownHostRepository(database.knownHostDao())
 
+    val configBackupRepository = ConfigBackupRepository(serverRepository)
+
     val settingsRepository = SettingsRepository(applicationContext)
+
+    val terminalCommandRepository = TerminalCommandRepository(applicationContext, secretCipher)
 
     val sshEngine: SshEngine = SshjEngine()
 
@@ -49,6 +56,13 @@ class AppContainer(
         serverRepository = serverRepository,
         knownHostRepository = knownHostRepository,
         settingsRepository = settingsRepository,
+        scope = appScope,
+    )
+
+    val sftpSessionManager = SftpSessionManager(
+        engine = sshEngine,
+        serverRepository = serverRepository,
+        knownHostRepository = knownHostRepository,
         scope = appScope,
     )
 

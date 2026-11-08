@@ -15,8 +15,8 @@ android {
         applicationId = "dev.sshmobile"
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.1.2"
+        versionCode = 4
+        versionName = "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -84,6 +84,10 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
+            all { test ->
+                // Robolectric + in-process SSH/SFTP servers exceed the default 512 MB worker heap.
+                test.maxHeapSize = "2g"
+            }
         }
     }
 
@@ -134,6 +138,7 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.room.testing)
     testImplementation(libs.sshd.core)
+    testImplementation(libs.sshd.sftp)
     testImplementation(libs.slf4j.simple)
 
     androidTestImplementation(libs.androidx.test.ext.junit)

@@ -13,10 +13,13 @@ import dev.sshmobile.domain.model.Server
 import dev.sshmobile.domain.model.ServerDraft
 import dev.sshmobile.domain.model.ServerValidation
 import dev.sshmobile.domain.model.ValidationError
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -35,6 +38,7 @@ data class ServerEditUiState(
     val passphrase: String = "",
     val groupName: String = "",
     val favorite: Boolean = false,
+    val jumpServerId: Long? = null,
     val hasStoredSecret: Boolean = false,
     val storedKeySummary: String? = null,
     val importedKeyName: String? = null,
@@ -56,6 +60,10 @@ class ServerEditViewModel(
 
     private val _state = MutableStateFlow(ServerEditUiState(serverId = serverId, loading = serverId != 0L))
     val state: StateFlow<ServerEditUiState> = _state.asStateFlow()
+
+    val jumpHostServers: StateFlow<List<Server>> = repository.observeServers()
+        .map { servers -> servers.filter { it.id != serverId && it.jumpServerId == null } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
         if (serverId != 0L) {
@@ -81,6 +89,8 @@ class ServerEditViewModel(
     fun setUsername(value: String) = _state.update { it.copy(username = value, errorRes = null) }
 
     fun setGroup(value: String) = _state.update { it.copy(groupName = value) }
+
+    fun setJumpServer(serverId: Long?) = _state.update { it.copy(jumpServerId = serverId) }
 
     fun setFavorite(value: Boolean) = _state.update { it.copy(favorite = value) }
 
@@ -147,6 +157,7 @@ class ServerEditViewModel(
             authType = current.authType,
             groupName = current.groupName.ifBlank { null },
             favorite = current.favorite,
+            jumpServerId = current.jumpServerId,
             newSecret = when {
                 current.authType == AuthType.PASSWORD -> current.password.takeIf { it.isNotEmpty() }
                 current.privateKey.isNotBlank() -> current.privateKey
@@ -234,6 +245,7 @@ class ServerEditViewModel(
         originalAuthType = server.authType,
         groupName = server.groupName.orEmpty(),
         favorite = server.favorite,
+        jumpServerId = server.jumpServerId,
         hasStoredSecret = server.hasSecret,
         storedKeySummary = server.keySummary,
     )

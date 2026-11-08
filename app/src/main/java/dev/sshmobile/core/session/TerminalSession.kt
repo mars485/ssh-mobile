@@ -5,7 +5,10 @@ import dev.sshmobile.core.ssh.SshConnection
 import dev.sshmobile.core.ssh.SshConnectionConfig
 import dev.sshmobile.core.ssh.SshEngine
 import dev.sshmobile.core.ssh.SshException
+import dev.sshmobile.core.ssh.SshHopConfig
+import dev.sshmobile.core.ssh.PortForwardSpec
 import dev.sshmobile.core.ssh.SshShell
+import dev.sshmobile.core.ssh.SshPortForward
 import dev.sshmobile.core.terminal.TerminalEmulator
 import dev.sshmobile.core.terminal.TerminalSnapshot
 import dev.sshmobile.data.repository.CredentialsUnavailableException
@@ -67,12 +70,22 @@ internal class TerminalSession(
         data class Resize(val cols: Int, val rows: Int) : ShellRequest
     }
 
+    private data class ManagedPortForward(
+        val info: ActivePortForward,
+        val handle: SshPortForward,
+    )
+
     private val emulator = TerminalEmulator(cols = 80, rows = 24, maxScrollback = scrollbackLines)
 
     private val _state = MutableStateFlow(
         TerminalSessionState(id = id, serverId = serverId),
     )
     override val state: StateFlow<TerminalSessionState> = _state.asStateFlow()
+
+    private val forwardLock = Any()
+    private val managedPortForwards = linkedMapOf<String, ManagedPortForward>()
+    private val _portForwards = MutableStateFlow<List<ActivePortForward>>(emptyList())
+    override val portForwards: StateFlow<List<ActivePortForward>> = _portForwards.asStateFlow()
 
     private val _snapshot = MutableStateFlow(emulator.snapshot())
     override val snapshot: StateFlow<TerminalSnapshot> = _snapshot.asStateFlow()
@@ -217,13 +230,26 @@ internal class TerminalSession(
                 dev.sshmobile.core.ssh.SshErrorKind.AUTH,
                 "No saved credentials. Edit the server and enter them again.",
             )
-        val knownKeys = knownHostRepository.keysFor(server.host, server.port)
-        val verifier = KnownHostsHostKeyVerifier(
-            host = server.host,
-            port = server.port,
-            knownKeys = knownKeys,
-            prompt = { challenge -> promptHostKeyBlocking(challenge) },
-        )
+        val verifier = hostKeyVerifier(server.host, server.port)
+        val jumpHost = server.jumpServerId?.let { jumpServerId ->
+            val jumpServer = serverRepository.getServer(jumpServerId)
+                ?: throw SshException(
+                    dev.sshmobile.core.ssh.SshErrorKind.UNKNOWN,
+                    "The selected jump server no longer exists.",
+                )
+            val jumpCredentials = serverRepository.credentials(jumpServerId)
+                ?: throw SshException(
+                    dev.sshmobile.core.ssh.SshErrorKind.AUTH,
+                    "The selected jump server has no saved credentials.",
+                )
+            SshHopConfig(
+                host = jumpServer.host,
+                port = jumpServer.port,
+                username = jumpServer.username,
+                credentials = jumpCredentials,
+                verifier = hostKeyVerifier(jumpServer.host, jumpServer.port),
+            )
+        }
 
         _state.update {
             it.copy(
@@ -237,6 +263,7 @@ internal class TerminalSession(
             port = server.port,
             username = server.username,
             credentials = credentials,
+            jumpHost = jumpHost,
         )
         val connection = engine.connect(config, verifier)
         activeConnection = connection
@@ -263,6 +290,13 @@ internal class TerminalSession(
         val cleanExit = pumpOutput(shell)
         return cleanExit && connection.isConnected()
     }
+
+    private suspend fun hostKeyVerifier(host: String, port: Int) = KnownHostsHostKeyVerifier(
+        host = host,
+        port = port,
+        knownKeys = knownHostRepository.keysFor(host, port),
+        prompt = { challenge -> promptHostKeyBlocking(challenge) },
+    )
 
     private suspend fun pumpOutput(shell: SshShell): Boolean = withContext(Dispatchers.IO) {
         val buffer = ByteArray(8192)
@@ -403,6 +437,39 @@ internal class TerminalSession(
     override fun textForLines(startLine: Int, endLine: Int): String =
         emulator.textForLines(startLine, endLine)
 
+    override suspend fun startPortForward(spec: PortForwardSpec): ActivePortForward {
+        val connection = activeConnection ?: throw IllegalStateException("SSH session is not connected")
+        val handle = connection.startPortForward(spec)
+        val info = ActivePortForward(
+            id = java.util.UUID.randomUUID().toString(),
+            spec = spec,
+            boundPort = handle.boundPort,
+        )
+        val registered = synchronized(forwardLock) {
+            if (userClosed || activeConnection !== connection) {
+                false
+            } else {
+                managedPortForwards[info.id] = ManagedPortForward(info, handle)
+                _portForwards.value = managedPortForwards.values.map { it.info }
+                true
+            }
+        }
+        if (!registered) {
+            handle.close()
+            throw IllegalStateException("SSH connection changed while starting the port forward")
+        }
+        return info
+    }
+
+    override fun stopPortForward(id: String) {
+        val managed = synchronized(forwardLock) {
+            val removed = managedPortForwards.remove(id)
+            _portForwards.value = managedPortForwards.values.map { it.info }
+            removed
+        }
+        managed?.handle?.close()
+    }
+
     override fun reconnectNow() {
         if (userClosed) return
         if (runJob?.isActive == true) return
@@ -431,14 +498,26 @@ internal class TerminalSession(
     }
 
     private fun closeConnection() {
+        val connection = activeConnection
+        activeConnection = null
+        closePortForwards()
         runCatching { writeChannel?.close() }
         writeChannel = null
         writerJob?.cancel()
         writerJob = null
         runCatching { activeShell?.close() }
         activeShell = null
-        runCatching { activeConnection?.close() }
-        activeConnection = null
+        runCatching { connection?.close() }
+    }
+
+    private fun closePortForwards() {
+        val forwards = synchronized(forwardLock) {
+            managedPortForwards.values.toList().also {
+                managedPortForwards.clear()
+                _portForwards.value = emptyList()
+            }
+        }
+        forwards.forEach { runCatching { it.handle.close() } }
     }
 
     private fun markDisconnected(error: SessionError) {

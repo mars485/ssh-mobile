@@ -31,6 +31,8 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -88,12 +90,14 @@ fun ServerEditScreen(
         },
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val jumpHostServers by viewModel.jumpHostServers.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var showPassword by remember { mutableStateOf(false) }
     var showKey by remember { mutableStateOf(false) }
     var showPassphrase by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var jumpMenuOpen by remember { mutableStateOf(false) }
 
     val keyPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) viewModel.importKey(context, uri)
@@ -203,6 +207,57 @@ fun ServerEditScreen(
                     modifier = Modifier.weight(1f),
                 )
             }
+
+            SectionLabel(stringResource(R.string.edit_jump_host_section))
+            val selectedJumpHost = jumpHostServers.firstOrNull { it.id == state.jumpServerId }
+            Box(Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = { jumpMenuOpen = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(
+                            stringResource(R.string.edit_jump_host_label),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            selectedJumpHost?.let {
+                                "${it.name} · ${it.username}@${it.host}:${it.port}"
+                            } ?: stringResource(R.string.edit_jump_host_none),
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                        )
+                    }
+                }
+                DropdownMenu(
+                    expanded = jumpMenuOpen,
+                    onDismissRequest = { jumpMenuOpen = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.edit_jump_host_none)) },
+                        onClick = {
+                            jumpMenuOpen = false
+                            viewModel.setJumpServer(null)
+                        },
+                    )
+                    jumpHostServers.forEach { jumpHost ->
+                        DropdownMenuItem(
+                            text = { Text("${jumpHost.name} · ${jumpHost.username}@${jumpHost.host}:${jumpHost.port}") },
+                            onClick = {
+                                jumpMenuOpen = false
+                                viewModel.setJumpServer(jumpHost.id)
+                            },
+                        )
+                    }
+                }
+            }
+            Text(
+                stringResource(R.string.edit_jump_host_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
 
             SectionLabel(stringResource(R.string.edit_auth_section))
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {

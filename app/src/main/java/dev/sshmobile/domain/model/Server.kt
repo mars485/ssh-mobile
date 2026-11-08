@@ -21,6 +21,7 @@ data class Server(
     val keySummary: String?,
     val createdAt: Long,
     val updatedAt: Long,
+    val jumpServerId: Long? = null,
 )
 
 /** Credentials are decrypted on demand, immediately before a connection is opened. */
@@ -50,6 +51,7 @@ data class ServerDraft(
     /** Plaintext passphrase; null means "keep the stored passphrase". */
     val newPassphrase: String? = null,
     val keySummary: String? = null,
+    val jumpServerId: Long? = null,
 )
 
 enum class ValidationError {

@@ -145,6 +145,135 @@ class SshEngineIntegrationTest {
     }
 
     @Test
+    fun `password authentication and host verification work through a jump host`() {
+        val jumpServer = startServer()
+        val targetServer = startServer()
+        val jumpPrompts = mutableListOf<Int>()
+        val targetPrompts = mutableListOf<Int>()
+        val targetFingerprints = mutableListOf<String>()
+
+        val connection = runBlocking {
+            SshjEngine().connect(
+                SshConnectionConfig(
+                    host = "127.0.0.1",
+                    port = targetServer.port,
+                    username = SshTestServer.USERNAME,
+                    credentials = ServerCredentials.Password(SshTestServer.PASSWORD),
+                    jumpHost = SshHopConfig(
+                        host = "127.0.0.1",
+                        port = jumpServer.port,
+                        username = SshTestServer.USERNAME,
+                        credentials = ServerCredentials.Password(SshTestServer.PASSWORD),
+                        verifier = KnownHostsHostKeyVerifier(
+                            host = "127.0.0.1",
+                            port = jumpServer.port,
+                            knownKeys = emptyList(),
+                            prompt = { challenge ->
+                                jumpPrompts += challenge.port
+                                true
+                            },
+                        ),
+                    ),
+                ),
+                KnownHostsHostKeyVerifier(
+                    host = "127.0.0.1",
+                    port = targetServer.port,
+                    knownKeys = emptyList(),
+                    prompt = { challenge ->
+                        targetPrompts += challenge.port
+                        targetFingerprints += challenge.fingerprint
+                        true
+                    },
+                ),
+            )
+        }
+
+        try {
+            assertEquals(listOf(jumpServer.port), jumpPrompts)
+            assertEquals(listOf(targetServer.port), targetPrompts)
+            assertEquals(targetFingerprints.single(), connection.hostKey.fingerprint)
+
+            val shell = runBlocking { connection.openShell(80, 24) }
+            val collector = OutputCollector(shell.input)
+            try {
+                assertTrue("target shell was not reached through the jump host", collector.awaitContains("SSH READY", 10_000))
+            } finally {
+                runCatching { shell.close() }
+                collector.stop()
+            }
+        } finally {
+            connection.close()
+        }
+    }
+
+    @Test
+    fun `local port forwarding reaches a target service`() {
+        val server = startServer()
+        val target = java.net.ServerSocket(0, 1, java.net.InetAddress.getByName("127.0.0.1"))
+        val targetThread = thread(start = true, isDaemon = true, name = "forward-target") {
+            runCatching {
+                target.accept().use { socket ->
+                    socket.getOutputStream().write("FORWARD-OK".toByteArray())
+                    socket.getOutputStream().flush()
+                }
+            }
+        }
+
+        val connection = runBlocking {
+            SshjEngine().connect(
+                SshConnectionConfig(
+                    host = "127.0.0.1",
+                    port = server.port,
+                    username = SshTestServer.USERNAME,
+                    credentials = ServerCredentials.Password(SshTestServer.PASSWORD),
+                ),
+                KnownHostsHostKeyVerifier(
+                    host = "127.0.0.1",
+                    port = server.port,
+                    knownKeys = emptyList(),
+                    prompt = { true },
+                ),
+            )
+        }
+
+        try {
+            val forward = runBlocking {
+                connection.startPortForward(
+                    PortForwardSpec(
+                        type = PortForwardType.LOCAL,
+                        bindHost = "127.0.0.1",
+                        bindPort = 0,
+                        destinationHost = "127.0.0.1",
+                        destinationPort = target.localPort,
+                    ),
+                )
+            }
+            try {
+                assertTrue(forward.boundPort > 0)
+                val received = java.net.Socket().use { socket ->
+                    socket.soTimeout = 10_000
+                    socket.connect(java.net.InetSocketAddress("127.0.0.1", forward.boundPort), 10_000)
+                    val buffer = ByteArray("FORWARD-OK".length)
+                    var read = 0
+                    while (read < buffer.size) {
+                        val count = socket.getInputStream().read(buffer, read, buffer.size - read)
+                        if (count < 0) break
+                        read += count
+                    }
+                    String(buffer, 0, read, Charsets.UTF_8)
+                }
+                assertEquals("FORWARD-OK", received)
+            } finally {
+                forward.close()
+            }
+        } finally {
+            connection.close()
+            runCatching { target.close() }
+            targetThread.interrupt()
+        }
+    }
+
+    @Test
     fun `wrong password is reported as an auth error`() {
         val server = startServer()
         val error = runCatching {

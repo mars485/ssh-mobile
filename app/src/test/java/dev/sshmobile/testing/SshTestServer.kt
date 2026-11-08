@@ -1,6 +1,7 @@
 package dev.sshmobile.testing
 
 import org.apache.sshd.common.channel.PtyMode
+import org.apache.sshd.common.file.virtualfs.VirtualFileSystemFactory
 import org.apache.sshd.common.keyprovider.KeyPairProvider
 import org.apache.sshd.server.Environment
 import org.apache.sshd.server.ExitCallback
@@ -9,11 +10,14 @@ import org.apache.sshd.server.auth.password.PasswordAuthenticator
 import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator
 import org.apache.sshd.server.channel.ChannelSession
 import org.apache.sshd.server.command.Command
+import org.apache.sshd.server.forward.AcceptAllForwardingFilter
 import org.apache.sshd.server.shell.ShellFactory
+import org.apache.sshd.sftp.server.SftpSubsystemFactory
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetSocketAddress
+import java.nio.file.Path
 import java.security.KeyPair
 import java.security.PublicKey
 import java.util.concurrent.CopyOnWriteArrayList
@@ -28,12 +32,15 @@ data class ShellRecord(
 /**
  * Small in-process SSH server used by the JVM integration tests. It performs a real key exchange,
  * password/public-key authentication and PTY shell allocation, so the SSHJ client configuration is
- * exercised end-to-end without touching any external infrastructure.
+ * exercised end-to-end without touching any external infrastructure. Passing [sftpRoot] additionally
+ * enables the SFTP subsystem, confined to that directory.
  */
 class SshTestServer(
     private val hostKeyPair: KeyPair,
     private val password: String?,
     private val authorizedKey: PublicKey?,
+    /** When set, the server exposes an SFTP subsystem rooted at this directory. */
+    private val sftpRoot: Path? = null,
 ) : AutoCloseable {
 
     val shells = CopyOnWriteArrayList<ShellRecord>()
@@ -43,6 +50,7 @@ class SshTestServer(
         server = SshServer.setUpDefaultServer()
         server.host = "127.0.0.1"
         server.port = port
+        server.forwardingFilter = AcceptAllForwardingFilter.INSTANCE
         server.keyPairProvider = KeyPairProvider.wrap(hostKeyPair)
         if (password != null) {
             server.passwordAuthenticator = PasswordAuthenticator { username, candidate, _ ->
@@ -55,6 +63,10 @@ class SshTestServer(
             }
         }
         server.shellFactory = ShellFactory { _ -> EchoShell(shells) }
+        sftpRoot?.let { root ->
+            server.fileSystemFactory = VirtualFileSystemFactory(root)
+            server.subsystemFactories = listOf(SftpSubsystemFactory.Builder().build())
+        }
         server.start()
         return this
     }

@@ -179,6 +179,27 @@ class LocalServerRepositoryTest {
     }
 
     @Test
+    fun `jump host references persist and are cleared when the gateway is deleted`() = runTest {
+        val gatewayId = repository.save(passwordDraft(name = "Gateway"))
+        val targetId = repository.save(passwordDraft(name = "Target").copy(jumpServerId = gatewayId))
+
+        assertEquals(gatewayId, repository.getServer(targetId)?.jumpServerId)
+
+        val nested = runCatching {
+            repository.save(passwordDraft(name = "Nested").copy(jumpServerId = targetId))
+        }.exceptionOrNull()
+        assertTrue(nested is IllegalArgumentException)
+
+        val selfReference = runCatching {
+            repository.save(passwordDraft(name = "Target").copy(id = targetId, jumpServerId = targetId))
+        }.exceptionOrNull()
+        assertTrue(selfReference is IllegalArgumentException)
+
+        repository.delete(gatewayId)
+        assertNull(repository.getServer(targetId)?.jumpServerId)
+    }
+
+    @Test
     fun `validation requires a secret for new and re-authenticated servers`() {
         val draft = passwordDraft(password = "")
         assertTrue(

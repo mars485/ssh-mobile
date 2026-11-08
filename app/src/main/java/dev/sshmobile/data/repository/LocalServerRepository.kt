@@ -25,9 +25,16 @@ class LocalServerRepository(
 
     override suspend fun getServer(id: Long): Server? = dao.findById(id)?.toDomain()
 
-    override suspend fun save(draft: ServerDraft): Long {
+    override suspend fun save(draft: ServerDraft, allowMissingSecret: Boolean): Long {
         val now = clock()
         val existing = if (draft.id != 0L) dao.findById(draft.id) else null
+        draft.jumpServerId?.let { jumpServerId ->
+            require(jumpServerId != draft.id) { "A server cannot jump through itself" }
+            require(!dao.isUsedAsJumpHost(draft.id)) { "A jump host cannot itself use another jump host" }
+            val jumpServer = dao.findById(jumpServerId)
+                ?: throw IllegalArgumentException("The selected jump server no longer exists")
+            require(jumpServer.jumpServerId == null) { "Nested jump hosts are not supported" }
+        }
         val secret = if (draft.newSecret != null) {
             cipher.encrypt(draft.newSecret)
         } else {
@@ -38,7 +45,7 @@ class LocalServerRepository(
         } else {
             existing?.passphrase
         }
-        if (secret == null) {
+        if (secret == null && !allowMissingSecret) {
             throw IllegalArgumentException("A secret is required for the selected authentication type")
         }
 
@@ -59,6 +66,7 @@ class LocalServerRepository(
             },
             createdAt = existing?.createdAt ?: now,
             updatedAt = now,
+            jumpServerId = draft.jumpServerId,
         )
         return if (existing == null) {
             dao.insert(entity)
@@ -68,7 +76,10 @@ class LocalServerRepository(
         }
     }
 
-    override suspend fun delete(id: Long) = dao.deleteById(id)
+    override suspend fun delete(id: Long) {
+        dao.clearJumpHostReferences(id)
+        dao.deleteById(id)
+    }
 
     override suspend fun setFavorite(id: Long, favorite: Boolean) =
         dao.setFavorite(id, favorite, clock())
@@ -115,5 +126,6 @@ class LocalServerRepository(
         keySummary = keySummary,
         createdAt = createdAt,
         updatedAt = updatedAt,
+        jumpServerId = jumpServerId,
     )
 }

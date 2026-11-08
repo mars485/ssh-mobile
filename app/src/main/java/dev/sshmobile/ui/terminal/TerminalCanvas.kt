@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.sshmobile.core.terminal.TerminalAttr
 import dev.sshmobile.core.terminal.TerminalSnapshot
-import dev.sshmobile.ui.theme.GreenAccent
+import dev.sshmobile.data.repository.TerminalFont
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.min
 
@@ -35,10 +35,6 @@ data class LineSelection(val startLine: Int, val endLine: Int) {
     fun contains(line: Int): Boolean = line in first..last
 }
 
-private val TerminalBackground = Color(0xFF070A08)
-private val TerminalForeground = Color(0xFFE8F2EC)
-private val SelectionTint = Color(0x5500E676)
-
 /**
  * Renders the visible terminal grid with a monospace [Paint] for predictable cell metrics, and
  * handles tap-to-focus, drag-to-scroll and long-press line selection.
@@ -47,6 +43,8 @@ private val SelectionTint = Color(0x5500E676)
 fun TerminalCanvas(
     snapshot: TerminalSnapshot,
     fontSizeSp: Float,
+    terminalFont: TerminalFont,
+    palette: TerminalPalette,
     selection: LineSelection?,
     onResize: (cols: Int, rows: Int) -> Unit,
     onScroll: (lines: Int) -> Unit,
@@ -57,9 +55,12 @@ fun TerminalCanvas(
 ) {
     val density = LocalDensity.current
     val textSizePx = with(density) { fontSizeSp.sp.toPx() }
-    val paint = remember(textSizePx) {
+    val paint = remember(textSizePx, terminalFont) {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = Typeface.MONOSPACE
+            typeface = when (terminalFont) {
+                TerminalFont.SYSTEM_MONO -> Typeface.MONOSPACE
+                TerminalFont.SANS_MONO -> Typeface.create("sans-serif-monospace", Typeface.NORMAL)
+            }
             textSize = textSizePx
         }
     }
@@ -170,7 +171,7 @@ fun TerminalCanvas(
                     }
                 },
         ) {
-            drawRect(TerminalBackground)
+            drawRect(palette.background)
             val selectionRange = currentSelection
 
             for (rowIndex in 0 until min(rows, snapshot.rows.size)) {
@@ -183,8 +184,8 @@ fun TerminalCanvas(
                     val cell = row[column]
                     if (cell.width == 0) continue
 
-                    var foreground = if (cell.fg == 0) TerminalForeground else Color(cell.fg)
-                    var background = if (cell.bg == 0) TerminalBackground else Color(cell.bg)
+                    var foreground = if (cell.fg == 0) palette.foreground else Color(cell.fg)
+                    var background = if (cell.bg == 0) palette.background else Color(cell.bg)
                     if (cell.attrs and TerminalAttr.REVERSE != 0) {
                         val swap = foreground
                         foreground = background
@@ -195,11 +196,11 @@ fun TerminalCanvas(
                     }
                     val cellW = cellWidth * cell.width
                     val x = column * cellWidth
-                    if (background != TerminalBackground) {
+                    if (background != palette.background) {
                         drawRect(background, topLeft = Offset(x, y), size = Size(cellW, cellHeight))
                     }
                     if (selected) {
-                        drawRect(SelectionTint, topLeft = Offset(x, y), size = Size(cellW, cellHeight))
+                        drawRect(palette.selection, topLeft = Offset(x, y), size = Size(cellW, cellHeight))
                     }
 
                     if (cell.text.isNotEmpty() && cell.attrs and TerminalAttr.HIDDEN == 0) {
@@ -241,12 +242,12 @@ fun TerminalCanvas(
                 val cy = snapshot.cursorRow * cellHeight
                 if (cx + cellWidth <= size.width && cy + cellHeight <= size.height) {
                     drawRect(
-                        color = GreenAccent.copy(alpha = 0.32f),
+                        color = palette.accent.copy(alpha = 0.32f),
                         topLeft = Offset(cx, cy),
                         size = Size(cellWidth, cellHeight),
                     )
                     drawRect(
-                        color = GreenAccent.copy(alpha = 0.9f),
+                        color = palette.accent.copy(alpha = 0.9f),
                         topLeft = Offset(cx, cy),
                         size = Size(cellWidth, cellHeight),
                         style = androidx.compose.ui.graphics.drawscope.Stroke(cursorStroke),

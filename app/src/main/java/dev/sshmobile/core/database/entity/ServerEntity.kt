@@ -22,4 +22,5 @@ data class ServerEntity(
     val keySummary: String?,
     val createdAt: Long,
     val updatedAt: Long,
+    val jumpServerId: Long? = null,
 )

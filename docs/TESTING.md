@@ -8,13 +8,19 @@
 ./gradlew testDebugUnitTest
 ```
 
-Результат: **42 теста, 0 падений, 0 ошибок**.
+Результат: **69 тестов, 0 падений, 0 ошибок**.
 
 | Набор | Кол-во | Что проверяет |
 |---|---:|---|
 | `TerminalEmulatorTest` | 22 | текст/перенос, CR/LF, CUP, erase, SGR (16/256/truecolor), scrollback, alt screen, resize, UTF-8 split, wide chars, insert/delete, scroll regions, DEC charset, OSC title, bracketed paste, DECSC/DECRC, DA/DSR, dumpText |
-| `SshEngineIntegrationTest` | 7 | реальный SSH KEX с Apache MINA SSHD, host key prompt/fingerprint, пароль, RSA-ключ, PTY 80×24, echo, resize, неверный пароль → `AUTH`, отказ host key, смена ключа, невалидный ключ |
-| `LocalServerRepositoryTest` | 8 | шифрование секретов at rest, ключ+passphrase, сохранение секрета при редактировании, избранное/сортировка, удаление, повреждённый шифротекст, clearAll, валидация |
+| `SshEngineIntegrationTest` | 9 | реальный SSH KEX с Apache MINA SSHD, host key prompt/fingerprint, пароль, RSA-ключ, PTY 80×24, echo, resize, jump host с двумя host key, локальный port forwarding, неверный пароль → `AUTH`, отказ host key, смена ключа, невалидный ключ |
+| `SftpEngineIntegrationTest` | 4 | SFTP через `sshd-sftp` и виртуальную ФС: листинг, создание/переименование/удаление, права, upload/download с прогрессом, ошибка на отсутствующем пути |
+| `LocalServerRepositoryTest` | 9 | шифрование секретов at rest, ключ+passphrase, сохранение секрета при редактировании, jump host, избранное/сортировка, удаление, повреждённый шифротекст, clearAll, валидация |
+| `TerminalCommandTrackerTest` | 5 | распознавание введённых команд, отключение в alternate screen/TUI, сброс состояния |
+| `TerminalCommandLibraryCodecTest` | 3 | кодек сниппетов и истории команд |
+| `TerminalCommandRepositoryTest` | 1 | шифрованное хранение истории и сниппетов |
+| `ConfigBackupCodecTest` | 6 | JSON-кодек конфигурации без секретов |
+| `ConfigBackupRepositoryTest` | 5 | экспорт/импорт, разрешение jump host по имени, сервер без учётных данных |
 | `KnownHostRepositoryTest` | 3 | хранение per host/port/algorithm, обновление с сохранением `addedAt`, remove/clear |
 | `LocalizationResourcesTest` | 2 | английские/русские строки, русская плюрализация `one/few/many`, ключевые ошибки и host-key предупреждение |
 
@@ -121,7 +127,8 @@ Compose/AndroidX.
 - Разные OEM-прошивки и Android 10/11/12/13; проверены Android 14 (HONOR) и Android 15
   (эмулятор).
 - Fingerprint-диалог при смене ключа и отказ от него.
-- SFTP (не входит в MVP).
+- SFTP на физическом устройстве: логика покрыта интеграционными JVM-тестами
+  (`sshd-sftp` + виртуальная ФС), ручная проверка на Android ещё не выполнялась.
 
 ### Замечание о среде
 

@@ -1,7 +1,10 @@
 package dev.sshmobile.ui.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +21,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.DeleteForever
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.Card
@@ -48,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -59,7 +65,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.sshmobile.BuildConfig
 import dev.sshmobile.R
 import dev.sshmobile.data.repository.AppLanguage
+import dev.sshmobile.data.repository.TerminalColorScheme
+import dev.sshmobile.data.repository.TerminalFont
 import dev.sshmobile.data.repository.ThemeMode
+import dev.sshmobile.ui.terminal.terminalPalette
 import dev.sshmobile.ui.LocalAppContainer
 import dev.sshmobile.ui.SimpleViewModelFactory
 import dev.sshmobile.ui.components.ConfirmDialog
@@ -67,7 +76,9 @@ import dev.sshmobile.ui.components.SectionLabel
 import dev.sshmobile.ui.theme.GreenAccent
 import dev.sshmobile.ui.theme.GreenSoft
 import dev.sshmobile.ui.theme.TerminalFontFamily
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,18 +93,89 @@ fun SettingsScreen(
                 settingsRepository = container.settingsRepository,
                 knownHostRepository = container.knownHostRepository,
                 serverRepository = container.serverRepository,
+                terminalCommandRepository = container.terminalCommandRepository,
+                configBackupRepository = container.configBackupRepository,
                 wipeKeystoreKey = container::wipeCredentials,
             )
         },
     )
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val knownHostCount by viewModel.knownHostCount.collectAsStateWithLifecycle()
+    val previewPalette = terminalPalette(settings.terminalColorScheme)
 
     var fontPreview by remember(settings.fontSizeSp) { mutableFloatStateOf(settings.fontSizeSp) }
     var confirmWipe by remember { mutableStateOf(false) }
     val snackbarHost = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val wipedMessage = stringResource(R.string.settings_wiped)
+    val context = LocalContext.current
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        viewModel.exportConfig { result ->
+            result.onSuccess { text ->
+                scope.launch {
+                    val saved = withContext(Dispatchers.IO) {
+                        runCatching {
+                            context.contentResolver.openOutputStream(uri)?.use { stream ->
+                                stream.write(text.toByteArray(Charsets.UTF_8))
+                            } ?: error("Could not open the selected file")
+                        }.isSuccess
+                    }
+                    snackbarHost.showSnackbar(
+                        context.getString(
+                            if (saved) R.string.settings_backup_export_done
+                            else R.string.settings_backup_export_failed,
+                        ),
+                    )
+                }
+            }.onFailure {
+                scope.launch { snackbarHost.showSnackbar(context.getString(R.string.settings_backup_export_failed)) }
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                }.getOrNull()
+            }
+            if (text.isNullOrBlank()) {
+                snackbarHost.showSnackbar(context.getString(R.string.settings_backup_import_failed))
+                return@launch
+            }
+            viewModel.importConfig(text) { result ->
+                result.onSuccess { outcome ->
+                    val message = if (outcome.errors.isEmpty()) {
+                        context.getString(
+                            R.string.settings_backup_import_done,
+                            outcome.imported,
+                            outcome.skipped,
+                        )
+                    } else {
+                        context.getString(
+                            R.string.settings_backup_import_done_errors,
+                            outcome.imported,
+                            outcome.skipped,
+                            outcome.errors.first(),
+                        )
+                    }
+                    scope.launch { snackbarHost.showSnackbar(message) }
+                }.onFailure {
+                    scope.launch {
+                        snackbarHost.showSnackbar(context.getString(R.string.settings_backup_import_failed))
+                    }
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -138,14 +220,55 @@ fun SettingsScreen(
                         onValueChangeFinished = { viewModel.setFontSize(fontPreview) },
                     )
                     Text(
+                        text = stringResource(R.string.settings_terminal_font_family),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(
+                            TerminalFont.SYSTEM_MONO to R.string.settings_terminal_font_system,
+                            TerminalFont.SANS_MONO to R.string.settings_terminal_font_sans,
+                        ).forEach { (font, label) ->
+                            FilterChip(
+                                selected = settings.terminalFont == font,
+                                onClick = { viewModel.setTerminalFont(font) },
+                                label = { Text(stringResource(label)) },
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.settings_terminal_color_scheme),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(
+                            TerminalColorScheme.GREEN to R.string.settings_terminal_palette_green,
+                            TerminalColorScheme.AMBER to R.string.settings_terminal_palette_amber,
+                            TerminalColorScheme.SOLARIZED_DARK to R.string.settings_terminal_palette_solarized,
+                            TerminalColorScheme.DRACULA to R.string.settings_terminal_palette_dracula,
+                        ).forEach { (scheme, label) ->
+                            FilterChip(
+                                selected = settings.terminalColorScheme == scheme,
+                                onClick = { viewModel.setTerminalColorScheme(scheme) },
+                                label = { Text(stringResource(label)) },
+                            )
+                        }
+                    }
+                    Text(
                         text = "user@host:~$ htop --sort-key PERCENT_CPU",
                         fontFamily = FontFamily.Monospace,
                         fontSize = fontPreview.sp,
-                        color = GreenSoft,
+                        color = previewPalette.foreground,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF070A08))
+                            .background(previewPalette.background)
                             .padding(10.dp),
                     )
                 }
@@ -312,6 +435,58 @@ fun SettingsScreen(
                         )
                     }
                     Icon(Icons.Outlined.ChevronRight, contentDescription = null)
+                }
+            }
+
+            SectionLabel(stringResource(R.string.settings_backup_section))
+            SettingsCard {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { exportLauncher.launch("sshmobile-config.json") }
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Outlined.FileUpload, contentDescription = null, tint = GreenSoft)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                stringResource(R.string.settings_backup_export_title),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Text(
+                                stringResource(R.string.settings_backup_export_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Icon(Icons.Outlined.ChevronRight, contentDescription = null)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                importLauncher.launch(arrayOf("application/json", "text/plain"))
+                            }
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Outlined.FileDownload, contentDescription = null, tint = GreenSoft)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                stringResource(R.string.settings_backup_import_title),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Text(
+                                stringResource(R.string.settings_backup_import_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Icon(Icons.Outlined.ChevronRight, contentDescription = null)
+                    }
                 }
             }
 

@@ -1,6 +1,7 @@
 package dev.sshmobile.core.session
 
 import dev.sshmobile.core.terminal.TerminalSnapshot
+import dev.sshmobile.core.ssh.PortForwardSpec
 import dev.sshmobile.domain.model.HostKeyChallenge
 import kotlinx.coroutines.flow.StateFlow
 
@@ -59,6 +60,12 @@ data class SessionInfo(
     val terminalTitle: String,
 )
 
+data class ActivePortForward(
+    val id: String,
+    val spec: PortForwardSpec,
+    val boundPort: Int,
+)
+
 fun TerminalSessionState.toInfo(): SessionInfo = SessionInfo(
     id = id,
     serverId = serverId,
@@ -74,6 +81,7 @@ interface TerminalSessionHandle {
     val id: String
     val state: StateFlow<TerminalSessionState>
     val snapshot: StateFlow<TerminalSnapshot>
+    val portForwards: StateFlow<List<ActivePortForward>>
 
     fun send(data: ByteArray)
     fun sendText(text: String)
@@ -82,6 +90,8 @@ interface TerminalSessionHandle {
     fun scrollToBottom()
     fun dumpText(): String
     fun textForLines(startLine: Int, endLine: Int): String
+    suspend fun startPortForward(spec: PortForwardSpec): ActivePortForward
+    fun stopPortForward(id: String)
     fun respondToHostKey(challengeId: String, accept: Boolean)
     fun reconnectNow()
     fun close()

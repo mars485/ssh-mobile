@@ -1,7 +1,8 @@
-# SSH Mobile — SSH-клиент для Android (v0.1.2)
+# SSH Mobile — SSH-клиент для Android (v0.3)
 
 Нативный SSH-клиент для Android 10+ с интерактивным терминалом, менеджером серверов,
-проверкой host key и шифрованием секретов через Android Keystore.
+SFTP, jump host, port forwarding, проверкой host key и шифрованием секретов через
+Android Keystore.
 
 Стек: **Kotlin 2.1**, **Jetpack Compose + Material 3**, **MVVM + Repository**,
 **SSHJ 0.41.2**, **Room 2.7.1**, **Android Keystore (AES-256-GCM)**, **Coroutines/StateFlow**,
@@ -21,9 +22,15 @@
 
 ## Статус
 
-- Исходный код **v0.1.2** готов, debug и release APK собраны.
-- 42 автоматических теста (JVM + Robolectric) проходят, включая реальное SSH-рукопожатие
-  с in-process сервером Apache MINA SSHD и проверку русских/английских ресурсов и плюрализации.
+- Исходный код **v0.2** (расширенный терминал) и **v0.3** (SFTP) готов; опубликованная
+  в RuStore сборка — **v0.1.2**, новые версии ещё не публиковались.
+- Автоматические тесты (JVM + Robolectric) проходят, включая реальное SSH-рукопожатие
+  и SFTP-сессии с in-process сервером Apache MINA SSHD, проверку русских/английских
+  ресурсов и плюрализации.
+- В v0.2 добавлены сниппеты и история команд, настройки шрифта и цветовых схем, ProxyJump,
+  локальный/удалённый port forwarding, экспорт/импорт конфигурации без секретов.
+- В v0.3 добавлен полноценный SFTP: просмотр каталогов, загрузка/скачивание с прогрессом,
+  создание, переименование, удаление и смена прав.
 - Проверено на эмуляторе **Android 15 (API 35)**: установка, вход по паролю, вход по
   SSH-ключу (импорт из файла), host-key confirmation с совпадающим fingerprint,
   интерактивный bash, htop, vim, resize PTY, две одновременные сессии.
@@ -66,6 +73,19 @@
 - Вставка из системного clipboard, с bracketed paste, если приложение его включило.
 - Resize терминала отправляется на сервер как window-change; проверено `stty size`.
 - Несколько одновременных сессий, экран Sessions, закрытие одной/всех, reconnect.
+- SSH jump host (ProxyJump) через сохранённый сервер-шлюз; проверяются оба host key.
+- Локальный и удалённый port forwarding; по умолчанию проброс слушает `127.0.0.1`
+  и закрывается вместе с сессией.
+
+### SFTP
+- Просмотр удалённых каталогов, переход вверх, обновление, создание папок.
+- Загрузка и скачивание файлов через системный файловый picker (SAF) с прогрессом
+  и очередью передач.
+- Переименование, удаление (включая рекативное для каталогов) и смена прав
+  восьмеричным режимом.
+- Те же шифрованные учётные данные и строгая проверка host key, что и в терминале.
+- Передачи идут по отдельному SFTP-каналу и не блокируют просмотр каталогов;
+  активные передачи останавливаются при отключении.
 
 ### Безопасность
 - Пароли, приватные ключи и passphrase шифруются AES-256-GCM ключом, который генерируется
@@ -80,9 +100,11 @@
 
 ### UX
 - Тёмная тема по умолчанию, зелёный акцент, моноширинный терминал; светлая тема опционально.
-- Настройки шрифта терминала, scrollback, keep screen on, авто-reconnect, screenshots.
+- Размер и моноширинное семейство шрифта, 4 цветовые схемы терминала, scrollback,
+  keep screen on, авто-reconnect, screenshots.
+- Сниппеты команд и история терминала; запись истории выключена по умолчанию, данные шифруются Android Keystore.
 - Управление known hosts, просмотр fingerprint.
-- Заглушка-раздел SFTP с планом v0.3 (сам SFTP в MVP не реализован).
+- Экспорт и импорт конфигурации без секретов (пароли, ключи и passphrase не выгружаются).
 
 ## Быстрый старт
 
@@ -160,21 +182,24 @@ APK подписан release-ключом (схема APK Signature v2); keystor
 ```
 app/src/main/java/dev/sshmobile/
   core/
-    ssh/         SshEngine (интерфейс), SshjEngine, KnownHostsVerifier, HostKeys, PrivateKeyInspector
-    terminal/    TerminalEmulator (VT100/xterm), TerminalInput, TextWidth
+    ssh/         SshEngine (интерфейс), SshjEngine, SshSftp, KnownHostsVerifier, HostKeys, PrivateKeyInspector
+    terminal/    TerminalEmulator (VT100/xterm), TerminalInput, TextWidth, TerminalCommandTracker
     security/    SecretCipher, AndroidKeystoreSecretCipher, CryptoProviders
-    database/    Room: AppDatabase, DAO, entities
-    session/     SshSessionManager, TerminalSession, состояние сессии
+    database/    Room: AppDatabase, DAO, entities (миграции 1→2)
+    session/     SshSessionManager, TerminalSession, SftpSessionManager, состояние сессий
+    backup/      ConfigBackupCodec (JSON без секретов)
   data/
-    repository/  ServerRepository, KnownHostRepository, SettingsRepository (DataStore)
+    repository/  ServerRepository, KnownHostRepository, SettingsRepository (DataStore),
+                 TerminalCommandRepository, ConfigBackupRepository
   domain/model/  Server, ServerCredentials, ServerDraft, HostKeyChallenge
   ui/
     servers/     Dashboard, Add/Edit server
-    terminal/    TerminalScreen, TerminalCanvas, ExtraKeysRow
+    terminal/    TerminalScreen, TerminalCanvas, ExtraKeysRow, PortForwardDialog,
+                 TerminalCommandLibraryDialog, TerminalPalette
     sessions/    Sessions
     settings/    Settings, Known hosts
-    sftp/        информационный экран
-    components/  общие composable
+    sftp/        SftpScreen, SftpViewModel
+    components/  общие composable, sessionErrorRes
     theme/
   navigation/    Compose Navigation  AppContainer.kt / SshMobileApplication.kt / MainActivity.kt
 ```
@@ -188,16 +213,21 @@ app/src/main/java/dev/sshmobile/
 ./gradlew testDebugUnitTest
 ```
 
-42 теста, 0 падений (на 29.10.2026):
+69 тестов, 0 падений:
 
 - 22 теста терминального эмулятора (курсор, SGR, альтернативный экран, UTF-8, wide chars,
   scrollback, resize, DEC charset, OSC, DA/DSR, bracketed paste);
-- 7 интеграционных SSH-тестов: реальный handshake с Apache MINA SSHD, пароль и RSA-ключ,
-  PTY 80×24, echo, resize, отказ при неверном пароле, отказ при отклонённом host key,
-  смена host key, fingerprint;
-- 8 тестов Room-репозитория серверов (шифрование at rest, обновление без смены секрета,
-  избранное, удаление, повреждённый шифротекст);
+- 5 тестов распознавания введённых команд для истории;
+- 9 интеграционных SSH-тестов: реальный handshake с Apache MINA SSHD, пароль и RSA-ключ,
+  PTY 80×24, echo, resize, jump host с двумя host key, локальный port forwarding,
+  отказ при неверном пароле, отказ при отклонённом host key, смена host key, fingerprint;
+- 4 интеграционных SFTP-теста с `sshd-sftp`: листинг, создание/переименование/удаление,
+  права доступа, upload/download с прогрессом;
+- 9 тестов Room-репозитория серверов (шифрование at rest, обновление без смены секрета,
+  избранное, удаление, повреждённый шифротекст, jump host);
 - 3 теста known_hosts (per host/port/algorithm, timestamps, удаление);
+- 4 теста сниппетов и истории команд (кодек и репозиторий);
+- 6 тестов кодека экспорта и 5 тестов импорта/экспорта конфигурации без секретов;
 - 2 теста локализации: английские/русские строки, плюрализация `one/few/many`.
 
 Проверка на эмуляторе и ручной чек-лист: [docs/TESTING.md](docs/TESTING.md).
@@ -214,10 +244,12 @@ app/src/main/java/dev/sshmobile/
 - при компрометации разблокированного устройства/root-доступе защита секретов ограничена
   возможностями платформы.
 
-## Известные ограничения MVP
+## Известные ограничения
 
-- SFTP не реализован (v0.3), экран SFTP информационный.
-- Нет jump host, port forwarding, сниппетов и истории команд (v0.2).
+- SFTP: одновременно подключён один сервер; вложенные jump host не поддерживаются;
+  редактирование файлов на месте не реализовано (файл скачивается и загружается обратно).
+- Port forwarding: пробросы живут в процессе приложения и закрываются вместе с SSH-сессией;
+  постоянных правил и автозапуска нет.
 - Нет поддержки SSH agent, FIDO/U2F и сертификатов; поддерживаются пароль, PEM/OpenSSH-ключи
   (RSA/ECDSA/Ed25519) и passphrase.
 - Мышь в терминале (mouse reporting) не поддерживается; TUI работают с клавиатурой.
@@ -237,16 +269,17 @@ app/src/main/java/dev/sshmobile/
 ## План развития
 
 **v0.2 — расширенный терминал**
-- сниппеты и история команд;
-- настройка шрифтов/цветовых схем, темы терминала;
-- SSH jump host (ProxyJump);
-- локальный/удалённый port forwarding;
-- импорт/экспорт конфигурации без секретов в открытом виде.
+- [x] сниппеты и история команд (история включается пользователем);
+- [x] настройки шрифта и цветовых схем терминала;
+- [x] SSH jump host (ProxyJump) через сохранённый сервер-шлюз;
+- [x] локальный/удалённый port forwarding;
+- [x] импорт/экспорт конфигурации без секретов в открытом виде.
 
 **v0.3 — SFTP**
-- просмотр каталогов, upload/download, создание/переименование/удаление;
-- редактирование текстовых файлов, права доступа;
-- прогресс и очередь передач, работа в фоне.
+- [x] просмотр каталогов, upload/download, создание/переименование/удаление;
+- [x] права доступа (восьмеричный режим);
+- [x] прогресс и очередь передач;
+- [ ] редактирование текстовых файлов на месте и фоновые передачи при закрытом приложении.
 
 **v0.4 — администрирование**
 - мониторинг CPU/RAM/диска/uptime;
