@@ -41,6 +41,11 @@
     }
   }
 
+  /* Кампания завершена (дедлайн счётчика прошёл) — место под баннер не держим. */
+  html.banner-off {
+    --banner-h: 0px;
+  }
+
   html {
     scroll-behavior: smooth;
     scroll-padding-top: calc(var(--header-h) + var(--banner-h) + 16px);

@@ -68,6 +68,13 @@ const softwareLd = {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      // banner.js считает до локальной полуночи 1 января 2027.
+      // После дедлайна не резервируем под него место ещё до первой отрисовки.
+      if (Date.now() >= new Date(2027, 0, 1, 0, 0, 0).getTime()) {
+        document.documentElement.classList.add('banner-off');
+      }
+    </script>
     <title>{t.seo.title}</title>
     <meta name="description" content={t.seo.description} />
     <meta name="keywords" content={t.seo.keywords} />
@@ -102,12 +109,6 @@ const softwareLd = {
 
     <script type="application/ld+json" set:html={JSON.stringify(softwareLd)} />
 
-    {/* Баннер кампании Keep Android Open (третья сторона, GPL-3.0, self-contained).
-        Хост разрешён в CSP nginx/security-headers.conf. */}
-    <script
-      is:inline
-      defer
-      src="https://keepandroidopen.org/banner.js?lang=ru&size=mini&id=my-banner"></script>
   </head>
   <body class="min-h-screen antialiased">
     <div id="my-banner" class="banner-slot"></div>
@@ -128,27 +129,68 @@ const softwareLd = {
     <Footer t={t} lang={lang} altHref={altPath} />
 
     <script is:inline>
-      // Баннер вставляется третьим скриптом асинхронно: держим шапку и контент ниже него.
+      // Баннер кампании Keep Android Open (GPL-3.0, self-contained, хост разрешён в CSP).
+      // Грузим его сами: после дедлайна-cчётчика он не должен появляться вообще.
       (function () {
         var slot = document.getElementById('my-banner');
-        if (!slot) return;
         var root = document.documentElement;
+        if (!slot) return;
+
+        var DEADLINE = new Date(2027, 0, 1, 0, 0, 0).getTime();
         var seenBanner = false;
         var gaveUp = false;
-        var apply = function () {
-          // Баннер закрывается через display:none, поэтому мерим видимых детей, а не детей вообще.
+        var finished = false;
+
+        var measure = function () {
           var visible = 0;
           for (var i = 0; i < slot.childElementCount; i++) {
             var el = slot.children[i];
-            if (getComputedStyle(el).display !== 'none') visible = Math.max(visible, el.getBoundingClientRect().height);
+            if (getComputedStyle(el).display !== 'none') {
+              visible = Math.max(visible, el.getBoundingClientRect().height);
+            }
           }
+          return visible;
+        };
+
+        var apply = function () {
+          if (finished) return;
+          var visible = measure();
           if (visible > 0) seenBanner = true;
-          // Пока внешний скрипт не ответил, держим резерв из CSS, иначе шапка прыгает вверх (CLS).
           var collapsed = visible === 0 && (seenBanner || gaveUp);
           slot.classList.toggle('is-collapsed', collapsed);
           if (collapsed) root.style.setProperty('--banner-h', '0px');
           else if (visible > 0) root.style.setProperty('--banner-h', visible + 'px');
         };
+
+        // Полное удаление баннера: контейнер уходит из DOM, шапка и контент поднимаются.
+        var finish = function () {
+          if (finished) return;
+          finished = true;
+          slot.innerHTML = '';
+          if (slot.parentNode) slot.parentNode.removeChild(slot);
+          root.classList.add('banner-off');
+          root.style.setProperty('--banner-h', '0px');
+        };
+
+        var checkDeadline = function () {
+          if (Date.now() >= DEADLINE) {
+            finish();
+            return true;
+          }
+          return false;
+        };
+
+        if (checkDeadline()) return;
+
+        var script = document.createElement('script');
+        script.src = 'https://keepandroidopen.org/banner.js?lang=ru&size=mini&id=my-banner';
+        script.async = true;
+        script.onerror = function () {
+          gaveUp = true;
+          apply();
+        };
+        document.head.appendChild(script);
+
         apply();
         if (window.ResizeObserver) new ResizeObserver(apply).observe(slot);
         if (window.MutationObserver) new MutationObserver(apply).observe(slot, { childList: true, subtree: true });
@@ -161,6 +203,17 @@ const softwareLd = {
             apply();
           }
         }, 3000);
+
+        // Пока страница открыта, проверяем дедлайн не реже раза в минуту.
+        var arm = function () {
+          var left = DEADLINE - Date.now();
+          if (left <= 0) {
+            checkDeadline();
+            return;
+          }
+          setTimeout(function () { if (!checkDeadline()) arm(); }, Math.min(left, 60000));
+        };
+        arm();
       })();
     </script>
 
