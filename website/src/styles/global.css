@@ -86,13 +86,22 @@
 }
 
 @layer components {
+  /* Место под баннер резервируем до загрузки внешнего скрипта — иначе контент
+     сдвигается после вставки (CLS). Высота совпадает с size=mini (44 px / 60 px). */
   .banner-slot {
     background: var(--color-bg);
     width: 100%;
+    min-height: 44px;
   }
 
-  .banner-slot:empty {
-    display: none;
+  @media (max-width: 767px) {
+    .banner-slot {
+      min-height: 60px;
+    }
+  }
+
+  .banner-slot.is-collapsed {
+    min-height: 0;
   }
 
   /* Баннер занимает место в потоке, поэтому здесь только высота липкой шапки. */
@@ -112,13 +121,22 @@
   }
 
   @media (min-width: 768px) {
-    .banner-slot {
+    /* Место под баннер резервируем до загрузки внешнего скрипта — иначе контент
+     сдвигается после вставки (CLS). Высота совпадает с size=mini (44 px / 60 px). */
+  .banner-slot {
     background: var(--color-bg);
     width: 100%;
+    min-height: 44px;
   }
 
-  .banner-slot:empty {
-    display: none;
+  @media (max-width: 767px) {
+    .banner-slot {
+      min-height: 60px;
+    }
+  }
+
+  .banner-slot.is-collapsed {
+    min-height: 0;
   }
 
   /* Баннер занимает место в потоке, поэтому здесь только высота липкой шапки. */

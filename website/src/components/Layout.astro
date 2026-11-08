@@ -134,14 +134,22 @@ const softwareLd = {
         if (!slot) return;
         var root = document.documentElement;
         var apply = function () {
-          var h = slot.offsetHeight || 0;
-          if (h > 0 && getComputedStyle(slot).display === 'none') h = 0;
-          root.style.setProperty('--banner-h', h + 'px');
+          // Баннер закрывается через display:none, поэтому мерим видимых детей, а не детей вообще.
+          var visible = 0;
+          for (var i = 0; i < slot.childElementCount; i++) {
+            var el = slot.children[i];
+            if (getComputedStyle(el).display !== 'none') visible = Math.max(visible, el.getBoundingClientRect().height);
+          }
+          slot.classList.toggle('is-collapsed', visible === 0);
+          root.style.setProperty('--banner-h', (visible > 0 ? visible : 0) + 'px');
         };
         apply();
         if (window.ResizeObserver) new ResizeObserver(apply).observe(slot);
         if (window.MutationObserver) new MutationObserver(apply).observe(slot, { childList: true, subtree: true });
         window.addEventListener('load', apply);
+        slot.addEventListener('click', function () { setTimeout(apply, 60); }, true);
+        // если внешний скрипт не загрузился — не держим пустую полосу
+        setTimeout(apply, 3000);
       })();
     </script>
 
